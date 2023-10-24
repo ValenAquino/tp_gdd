@@ -954,13 +954,17 @@ create procedure LOS_QUERY_EXPLORERS.migracion_pago_periodo
 as
 begin
     insert into LOS_QUERY_EXPLORERS.pago_periodo(pago_periodo_id, pago_periodo_fecha, pago_periodo_periodo, pago_periodo_medio_de_pago, pago_periodo_importe)
-    select distinct PAGO_ALQUILER_CODIGO,
-					PAGO_ALQUILER_FECHA,
-					-- FK con periodo,
+    select distinct M.PAGO_ALQUILER_CODIGO,
+					M.PAGO_ALQUILER_FECHA,
+					(select periodo_id from LOS_QUERY_EXPLORERS.periodo where periodo_alquiler = M.ALQUILER_CODIGO and
+																			  periodo_numero = M.PAGO_ALQUILER_NRO_PERIODO and
+																			  periodo_fecha_inicio = M.PAGO_ALQUILER_FEC_INI and
+																			  periodo_fecha_fin = M.PAGO_ALQUILER_FEC_FIN and
+																			  periodo_descripcion = M.PAGO_ALQUILER_DESC),
 					(select medio_de_pago_id from LOS_QUERY_EXPLORERS.medio_de_pago where medio_de_pago_nombre = PAGO_ALQUILER_MEDIO_PAGO)
 					-- FK con importe
-    from gd_esquema.Maestra
-    where PAGO_ALQUILER_CODIGO is not null
+    from gd_esquema.Maestra M
+    where M.PAGO_ALQUILER_CODIGO is not null
 
 end
 go 
@@ -981,7 +985,6 @@ begin
 end
 go
 */
-
 --Ejecuciones de Stored Procedures
 
 exec LOS_QUERY_EXPLORERS.migracion_moneda
