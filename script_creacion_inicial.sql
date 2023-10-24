@@ -784,6 +784,17 @@ begin
 end
 go
 
+--SUCURSAL
+create procedure LOS_QUERY_EXPLORERS.migracion_sucursal
+as
+begin
+    insert into LOS_QUERY_EXPLORERS.sucursal(sucursal_id, sucursal_nombre, sucursal_direccion, sucursal_telefono, sucursal_localidad, sucursal_provincia)
+    select distinct SUCURSAL_CODIGO, SUCURSAL_NOMBRE, SUCURSAL_DIRECCION, SUCURSAL_TELEFONO, (select localidad_id from LOS_QUERY_EXPLORERS.localidad where localidad_nombre = SUCURSAL_LOCALIDAD), (select provincia_id from LOS_QUERY_EXPLORERS.provincia where provincia_nombre = SUCURSAL_PROVINCIA)
+    from gd_esquema.Maestra
+    where SUCURSAL_CODIGO is not null and SUCURSAL_NOMBRE is not null and SUCURSAL_DIRECCION is not null and SUCURSAL_TELEFONO is not null
+end
+go
+
 --AGENTE
 create procedure LOS_QUERY_EXPLORERS.migracion_agente
 as
@@ -796,16 +807,6 @@ begin
 end
 go
 
---SUCURSAL
-create procedure LOS_QUERY_EXPLORERS.migracion_sucursal
-as
-begin
-    insert into LOS_QUERY_EXPLORERS.sucursal(sucursal_id, sucursal_nombre, sucursal_direccion, sucursal_telefono, sucursal_localidad, sucursal_provincia)
-    select distinct SUCURSAL_CODIGO, SUCURSAL_NOMBRE, SUCURSAL_DIRECCION, SUCURSAL_TELEFONO, (select localidad_id from LOS_QUERY_EXPLORERS.localidad where localidad_nombre = SUCURSAL_LOCALIDAD), (select provincia_id from LOS_QUERY_EXPLORERS.provincia where provincia_nombre = SUCURSAL_PROVINCIA)
-    from gd_esquema.Maestra
-    where SUCURSAL_CODIGO is not null and SUCURSAL_NOMBRE is not null and SUCURSAL_DIRECCION is not null and SUCURSAL_TELEFONO is not null
-end
-go
 
 --INMUEBLE
 create procedure LOS_QUERY_EXPLORERS.migracion_inmueble
@@ -857,6 +858,6 @@ exec LOS_QUERY_EXPLORERS.migracion_persona
 exec LOS_QUERY_EXPLORERS.migracion_inquilino
 exec LOS_QUERY_EXPLORERS.migracion_propietario
 exec LOS_QUERY_EXPLORERS.migracion_comprador
-exec LOS_QUERY_EXPLORERS.migracion_agente
 exec LOS_QUERY_EXPLORERS.migracion_sucursal
+exec LOS_QUERY_EXPLORERS.migracion_agente
 exec LOS_QUERY_EXPLORERS.migracion_inmueble
