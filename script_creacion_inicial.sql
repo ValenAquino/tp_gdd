@@ -838,14 +838,41 @@ end
 go
 
 -- CARACTERISTICASXINMUEBLE
-create procedure LOS_QUERY_EXPLORERS.migracion_caraceristicasXInmueble
+
+------- CARACTERISTICAS
+-- 0: NINGUNCA
+-- 1: CABLE
+-- 2: CALEFACCION
+-- 3: GAS
+-- 4: WIFI
+
+--	 Se crea una "fila" por cada caracteristica de cada inmueble.
+---- Si no tiene ninguno, no se crea ninguna.
+---- Si tiene LUZ y GAS, se crean 2. Una para luz, otra para gas.
+
+go 
+
+create procedure LOS_QUERY_EXPLORERS.migracion_caracteristicasXInmueble
 as
 begin
     insert into LOS_QUERY_EXPLORERS.caracteristicasXInmueble(caracteristica_id, inmueble_id)
-    select distinct -- FK con caracteristica,
-					-- FK con inmueble
-    from gd_esquema.Maestra
-    where Maestra.INMUEBLE_CODIGO is not null
+	(	select distinct 1, INMUEBLE_CODIGO
+		from gd_esquema.Maestra
+		where INMUEBLE_CARACTERISTICA_CABLE = 1 )
+	UNION
+	(	select distinct 2, INMUEBLE_CODIGO
+		from gd_esquema.Maestra
+		where INMUEBLE_CARACTERISTICA_CALEFACCION = 1 )
+	UNION
+	(	select distinct 3, INMUEBLE_CODIGO
+		from gd_esquema.Maestra
+		where INMUEBLE_CARACTERISTICA_GAS = 1 )
+	UNION
+	(	select distinct 4, INMUEBLE_CODIGO
+		from gd_esquema.Maestra
+		where INMUEBLE_CARACTERISTICA_WIFI = 1 )
+
+
 end
 go
 
@@ -998,7 +1025,7 @@ exec LOS_QUERY_EXPLORERS.migracion_comprador
 exec LOS_QUERY_EXPLORERS.migracion_sucursal
 exec LOS_QUERY_EXPLORERS.migracion_agente
 exec LOS_QUERY_EXPLORERS.migracion_inmueble
--- exec LOS_QUERY_EXPLORERS.migracion_caraceristicasXInmueble
+exec LOS_QUERY_EXPLORERS.migracion_caracteristicasXInmueble
 -- exec LOS_QUERY_EXPLORERS.migracion_anuncio
 -- exec LOS_QUERY_EXPLORERS.migracion_periodo
 -- exec LOS_QUERY_EXPLORERS.migracion_pago_periodo
