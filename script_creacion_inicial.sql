@@ -169,7 +169,7 @@ create table LOS_QUERY_EXPLORERS.anuncio
 	anuncio_fecha_publicacion datetime NULL,
 	anuncio_agente numeric(18,0) NOT NULL,
 	anuncio_tipo_operacion numeric(18,0) NOT NULL,
-	anuncio_inmueble numeric(18,0) NULL,
+	anuncio_inmueble numeric(18,0) NOT NULL,
 	anuncio_precio_publicado numeric(18,2) NULL,
 	anuncio_moneda numeric(18,0) NOT NULL,
 	anuncio_tipo_periodo numeric(18,0) NOT NULL,
@@ -877,7 +877,7 @@ end
 go
 
 -- MIGRACION ANUNCIO
-alter procedure LOS_QUERY_EXPLORERS.migracion_anuncio
+create procedure LOS_QUERY_EXPLORERS.migracion_anuncio
 as
 begin
     insert into LOS_QUERY_EXPLORERS.anuncio(anuncio_id, anuncio_fecha_publicacion, anuncio_agente, anuncio_tipo_operacion, anuncio_inmueble, anuncio_precio_publicado, anuncio_moneda, anuncio_tipo_periodo, anuncio_estado, anuncio_fecha_finalizacion, anuncio_costo_publicacion)
@@ -900,7 +900,6 @@ begin
 end
 go
 
-
 -- ALQUILER
 -- FALTA ALQUILER INQUILINO, pero no está en ninguna otra columna de la tabla maestra...
 -- debería estar pero no encontré nada que referencie a quien alquila cada alquiler.
@@ -911,22 +910,24 @@ begin
     insert into LOS_QUERY_EXPLORERS.alquiler(alquiler_id, alquiler_anuncio, alquiler_inquilino, alquiler_fecha_inicio,
     alquiler_fecha_fin, alquiler_cant_periodos, alquiler_deposito, alquiler_comision_inmobiliaria,
     alquiler_gastos_de_averiguaciones, alquiler_estado)
-    select distinct ALQUILER_CODIGO,
-					-- FK con anuncio,
-					-- FK con inquilino
-                    ALQUILER_FECHA_INICIO,
-                    ALQUILER_FECHA_FIN,
-                    ALQUILER_CANT_PERIODOS,
-                    ALQUILER_DEPOSITO,
-                    ALQUILER_COMISION,
-                    ALQUILER_GASTOS_AVERIGUA,
-                    (select estado_alquiler_id from LOS_QUERY_EXPLORERS.estado_alquiler where estado_alquiler_nombre = ALQUILER_ESTADO)
-
-    from gd_esquema.Maestra
-    where ALQUILER_CODIGO is not null
+    select distinct M.ALQUILER_CODIGO,
+					M.ANUNCIO_CODIGO,
+					(select inquilino_id from LOS_QUERY_EXPLORERS.inquilino where inquilino_persona = (select persona_id from LOS_QUERY_EXPLORERS.persona where (persona_nombre = M.INQUILINO_NOMBRE) and (persona_apellido = M.INQUILINO_APELLIDO) and (persona_dni = M.INQUILINO_DNI) and
+					(persona_fecha_nacimiento = M.INQUILINO_FECHA_NAC) and (persona_mail = M.INQUILINO_MAIL) and (persona_telefono = M.INQUILINO_TELEFONO) and (persona_fecha_registro = M.INQUILINO_FECHA_REGISTRO))),
+                    M.ALQUILER_FECHA_INICIO,
+                    M.ALQUILER_FECHA_FIN,
+                    M.ALQUILER_CANT_PERIODOS,
+                    M.ALQUILER_DEPOSITO,
+                    M.ALQUILER_COMISION,
+                    M.ALQUILER_GASTOS_AVERIGUA,
+                    (select estado_alquiler_id from LOS_QUERY_EXPLORERS.estado_alquiler where estado_alquiler_nombre = M.ALQUILER_ESTADO)
+    from gd_esquema.Maestra M
+    where M.ALQUILER_CODIGO is not null and M.ANUNCIO_CODIGO is not null
 
 end
 go
+
+
 
 -- PERIODO
 
@@ -934,7 +935,7 @@ create procedure LOS_QUERY_EXPLORERS.migracion_periodo
 as
 begin
     insert into LOS_QUERY_EXPLORERS.periodo(periodo_alquiler, periodo_numero, periodo_fecha_inicio, periodo_fecha_fin, periodo_descripcion)
-    select distinct -- FK con alquiler,
+    select distinct ALQUILER_CODIGO,
                     PAGO_ALQUILER_NRO_PERIODO,
                     PAGO_ALQUILER_FEC_INI,
                     PAGO_ALQUILER_FEC_FIN,
@@ -942,14 +943,11 @@ begin
 
     from gd_esquema.Maestra
     where 
-    	  PAGO_ALQUILER_NRO_PERIODO is not null
-      and PAGO_ALQUILER_FEC_INI is not null
-      and PAGO_ALQUILER_FEC_FIN is not null
-      and PAGO_ALQUILER_DESC is not null
-
+    	  ALQUILER_CODIGO is not null
 end
 go
 
+/*
 -- PAGO PERIODO
 
 create procedure LOS_QUERY_EXPLORERS.migracion_pago_periodo
@@ -982,7 +980,7 @@ begin
 
 end
 go
-
+*/
 
 --Ejecuciones de Stored Procedures
 
@@ -1010,8 +1008,7 @@ exec LOS_QUERY_EXPLORERS.migracion_agente
 exec LOS_QUERY_EXPLORERS.migracion_inmueble
 exec LOS_QUERY_EXPLORERS.migracion_caracteristicasXInmueble
 exec LOS_QUERY_EXPLORERS.migracion_anuncio
--- exec LOS_QUERY_EXPLORERS.migracion_anuncio
--- exec LOS_QUERY_EXPLORERS.migracion_periodo
+exec LOS_QUERY_EXPLORERS.migracion_alquiler
+exec LOS_QUERY_EXPLORERS.migracion_periodo
 -- exec LOS_QUERY_EXPLORERS.migracion_pago_periodo
--- exec LOS_QUERY_EXPLORERS.migracion_alquiler
 -- exec LOS_QUERY_EXPLORERS.migracion_importe
