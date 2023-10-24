@@ -877,7 +877,7 @@ end
 go
 
 -- MIGRACION ANUNCIO
-create procedure LOS_QUERY_EXPLORERS.migracion_anuncio
+alter procedure LOS_QUERY_EXPLORERS.migracion_anuncio
 as
 begin
     insert into LOS_QUERY_EXPLORERS.anuncio(anuncio_id, anuncio_fecha_publicacion, anuncio_agente, anuncio_tipo_operacion, anuncio_inmueble, anuncio_precio_publicado, anuncio_moneda, anuncio_tipo_periodo, anuncio_estado, anuncio_fecha_finalizacion, anuncio_costo_publicacion)
@@ -888,25 +888,7 @@ begin
 					(persona_fecha_nacimiento = M.AGENTE_FECHA_NAC) and (persona_mail = M.AGENTE_MAIL) and (persona_telefono = M.AGENTE_TELEFONO) and (persona_fecha_registro = M.AGENTE_FECHA_REGISTRO)) 
 					and agente_sucursal = M.SUCURSAL_CODIGO),
 					(select tipo_operacion_id from LOS_QUERY_EXPLORERS.tipo_operacion where tipo_operacion_nombre = M.ANUNCIO_TIPO_OPERACION),
-					(select inmueble_id from LOS_QUERY_EXPLORERS.inmueble where
-					inmueble_tipo_inmueble = (select tipo_inmueble_id from LOS_QUERY_EXPLORERS.tipo_inmueble where tipo_inmueble_nombre = M.INMUEBLE_TIPO_INMUEBLE) and
-					inmueble_descripcion = M.INMUEBLE_DESCRIPCION and
-					inmueble_propietario  = (select propietario_id from LOS_QUERY_EXPLORERS.propietario where propietario_persona = (select persona_id from persona where (persona_apellido = M.PROPIETARIO_APELLIDO) and (persona_dni = M.PROPIETARIO_DNI))) and
-					inmueble_direccion = M.INMUEBLE_DIRECCION and
-					inmueble_provincia = (select provincia_id from LOS_QUERY_EXPLORERS.provincia where provincia_nombre = M.INMUEBLE_PROVINCIA) and
-					inmueble_localidad = (select localidad_id from LOS_QUERY_EXPLORERS.localidad where localidad_nombre = M.INMUEBLE_LOCALIDAD) and
-					inmueble_barrio = (select barrio_id from LOS_QUERY_EXPLORERS.barrio where barrio_nombre = M.INMUEBLE_BARRIO) and
-					inmueble_ambientes = (select ambientes_id from LOS_QUERY_EXPLORERS.ambientes where ambientes_numero = M.INMUEBLE_CANT_AMBIENTES) and
-					inmueble_superficie_total = M.INMUEBLE_SUPERFICIETOTAL and
-					inmueble_disposicion = (select disposicion_id from LOS_QUERY_EXPLORERS.disposicion where disposicion_nombre = M.INMUEBLE_DISPOSICION) and
-					inmueble_orientacion = (select orientacion_id from LOS_QUERY_EXPLORERS.orientacion where orientacion_nombre = M.INMUEBLE_ORIENTACION) and
-					inmueble_estado = (select estado_inmueble_id from LOS_QUERY_EXPLORERS.estado_inmueble where estado_inmueble_nombre = M.INMUEBLE_ESTADO) and
-					inmueble_antiguedad = M.INMUEBLE_ANTIGUEDAD and
-					inmueble_expensas = M.INMUEBLE_EXPESAS and
-					inmueble_dependencia = (case 
-                        when M.INMUEBLE_CANT_AMBIENTES = '2 ambientes con dependencia' then 1
-                        else 0
-                    	end)),
+					M.INMUEBLE_CODIGO,
 					M.ANUNCIO_PRECIO_PUBLICADO,
 					(select moneda_id from LOS_QUERY_EXPLORERS.moneda where moneda_nombre = M.ANUNCIO_MONEDA),
 					(select tipo_periodo_id from LOS_QUERY_EXPLORERS.tipo_periodo where tipo_periodo_nombre = M.ANUNCIO_TIPO_PERIODO),
@@ -914,9 +896,10 @@ begin
 					M.ANUNCIO_FECHA_FINALIZACION,
 					M.ANUNCIO_COSTO_ANUNCIO
     from gd_esquema.Maestra M
-    where M.ANUNCIO_CODIGO is not null
+    where M.ANUNCIO_CODIGO is not null and M.INMUEBLE_CODIGO is not null
 end
 go
+
 
 -- ALQUILER
 -- FALTA ALQUILER INQUILINO, pero no está en ninguna otra columna de la tabla maestra...
@@ -1026,6 +1009,7 @@ exec LOS_QUERY_EXPLORERS.migracion_sucursal
 exec LOS_QUERY_EXPLORERS.migracion_agente
 exec LOS_QUERY_EXPLORERS.migracion_inmueble
 exec LOS_QUERY_EXPLORERS.migracion_caracteristicasXInmueble
+exec LOS_QUERY_EXPLORERS.migracion_anuncio
 -- exec LOS_QUERY_EXPLORERS.migracion_anuncio
 -- exec LOS_QUERY_EXPLORERS.migracion_periodo
 -- exec LOS_QUERY_EXPLORERS.migracion_pago_periodo
