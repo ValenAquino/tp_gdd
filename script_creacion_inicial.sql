@@ -169,7 +169,7 @@ create table LOS_QUERY_EXPLORERS.anuncio
 	anuncio_fecha_publicacion datetime NULL,
 	anuncio_agente numeric(18,0) NOT NULL,
 	anuncio_tipo_operacion numeric(18,0) NOT NULL,
-	anuncio_inmueble numeric(18,0) NOT NULL,
+	anuncio_inmueble numeric(18,0) NULL,
 	anuncio_precio_publicado numeric(18,2) NULL,
 	anuncio_moneda numeric(18,0) NOT NULL,
 	anuncio_tipo_periodo numeric(18,0) NOT NULL,
@@ -837,6 +837,143 @@ begin
 end
 go
 
+-- CARACTERISTICASXINMUEBLE
+create procedure LOS_QUERY_EXPLORERS.migracion_caraceristicasXInmueble
+as
+begin
+    insert into LOS_QUERY_EXPLORERS.caracteristicasXInmueble(caracteristica_id, inmueble_id)
+    select distinct -- FK con caracteristica,
+					-- FK con inmueble
+    from gd_esquema.Maestra
+    where Maestra.INMUEBLE_CODIGO is not null
+end
+go
+
+-- MIGRACION ANUNCIO
+create procedure LOS_QUERY_EXPLORERS.migracion_anuncio
+as
+begin
+    insert into LOS_QUERY_EXPLORERS.anuncio(anuncio_id, anuncio_fecha_publicacion, anuncio_agente, anuncio_tipo_operacion, anuncio_inmueble, anuncio_precio_publicado, anuncio_moneda, anuncio_tipo_periodo, anuncio_estado, anuncio_fecha_finalizacion, anuncio_costo_publicacion)
+	select distinct 
+					M.ANUNCIO_CODIGO,
+					M.ANUNCIO_FECHA_PUBLICACION,
+					(select agente_id from LOS_QUERY_EXPLORERS.agente where agente_persona = (select persona_id from LOS_QUERY_EXPLORERS.persona where (persona_nombre = M.AGENTE_NOMBRE) and (persona_apellido = M.AGENTE_APELLIDO) and (persona_dni = M.AGENTE_DNI) and
+					(persona_fecha_nacimiento = M.AGENTE_FECHA_NAC) and (persona_mail = M.AGENTE_MAIL) and (persona_telefono = M.AGENTE_TELEFONO) and (persona_fecha_registro = M.AGENTE_FECHA_REGISTRO)) 
+					and agente_sucursal = M.SUCURSAL_CODIGO),
+					(select tipo_operacion_id from LOS_QUERY_EXPLORERS.tipo_operacion where tipo_operacion_nombre = M.ANUNCIO_TIPO_OPERACION),
+					(select inmueble_id from LOS_QUERY_EXPLORERS.inmueble where
+					inmueble_tipo_inmueble = (select tipo_inmueble_id from LOS_QUERY_EXPLORERS.tipo_inmueble where tipo_inmueble_nombre = M.INMUEBLE_TIPO_INMUEBLE) and
+					inmueble_descripcion = M.INMUEBLE_DESCRIPCION and
+					inmueble_propietario  = (select propietario_id from LOS_QUERY_EXPLORERS.propietario where propietario_persona = (select persona_id from persona where (persona_apellido = M.PROPIETARIO_APELLIDO) and (persona_dni = M.PROPIETARIO_DNI))) and
+					inmueble_direccion = M.INMUEBLE_DIRECCION and
+					inmueble_provincia = (select provincia_id from LOS_QUERY_EXPLORERS.provincia where provincia_nombre = M.INMUEBLE_PROVINCIA) and
+					inmueble_localidad = (select localidad_id from LOS_QUERY_EXPLORERS.localidad where localidad_nombre = M.INMUEBLE_LOCALIDAD) and
+					inmueble_barrio = (select barrio_id from LOS_QUERY_EXPLORERS.barrio where barrio_nombre = M.INMUEBLE_BARRIO) and
+					inmueble_ambientes = (select ambientes_id from LOS_QUERY_EXPLORERS.ambientes where ambientes_numero = M.INMUEBLE_CANT_AMBIENTES) and
+					inmueble_superficie_total = M.INMUEBLE_SUPERFICIETOTAL and
+					inmueble_disposicion = (select disposicion_id from LOS_QUERY_EXPLORERS.disposicion where disposicion_nombre = M.INMUEBLE_DISPOSICION) and
+					inmueble_orientacion = (select orientacion_id from LOS_QUERY_EXPLORERS.orientacion where orientacion_nombre = M.INMUEBLE_ORIENTACION) and
+					inmueble_estado = (select estado_inmueble_id from LOS_QUERY_EXPLORERS.estado_inmueble where estado_inmueble_nombre = M.INMUEBLE_ESTADO) and
+					inmueble_antiguedad = M.INMUEBLE_ANTIGUEDAD and
+					inmueble_expensas = M.INMUEBLE_EXPESAS and
+					inmueble_dependencia = (case 
+                        when M.INMUEBLE_CANT_AMBIENTES = '2 ambientes con dependencia' then 1
+                        else 0
+                    	end)),
+					M.ANUNCIO_PRECIO_PUBLICADO,
+					(select moneda_id from LOS_QUERY_EXPLORERS.moneda where moneda_nombre = M.ANUNCIO_MONEDA),
+					(select tipo_periodo_id from LOS_QUERY_EXPLORERS.tipo_periodo where tipo_periodo_nombre = M.ANUNCIO_TIPO_PERIODO),
+					(select estado_anuncio_id from LOS_QUERY_EXPLORERS.estado_anuncio where estado_anuncio_nombre = M.ANUNCIO_ESTADO),
+					M.ANUNCIO_FECHA_FINALIZACION,
+					M.ANUNCIO_COSTO_ANUNCIO
+    from gd_esquema.Maestra M
+    where M.ANUNCIO_CODIGO is not null
+end
+go
+
+-- ALQUILER
+-- FALTA ALQUILER INQUILINO, pero no está en ninguna otra columna de la tabla maestra...
+-- debería estar pero no encontré nada que referencie a quien alquila cada alquiler.
+
+create procedure LOS_QUERY_EXPLORERS.migracion_alquiler
+as
+begin
+    insert into LOS_QUERY_EXPLORERS.alquiler(alquiler_id, alquiler_anuncio, alquiler_inquilino, alquiler_fecha_inicio,
+    alquiler_fecha_fin, alquiler_cant_periodos, alquiler_deposito, alquiler_comision_inmobiliaria,
+    alquiler_gastos_de_averiguaciones, alquiler_estado)
+    select distinct ALQUILER_CODIGO,
+					-- FK con anuncio,
+					-- FK con inquilino
+                    ALQUILER_FECHA_INICIO,
+                    ALQUILER_FECHA_FIN,
+                    ALQUILER_CANT_PERIODOS,
+                    ALQUILER_DEPOSITO,
+                    ALQUILER_COMISION,
+                    ALQUILER_GASTOS_AVERIGUA,
+                    (select estado_alquiler_id from LOS_QUERY_EXPLORERS.estado_alquiler where estado_alquiler_nombre = ALQUILER_ESTADO)
+
+    from gd_esquema.Maestra
+    where ALQUILER_CODIGO is not null
+
+end
+go
+
+-- PERIODO
+
+create procedure LOS_QUERY_EXPLORERS.migracion_periodo
+as
+begin
+    insert into LOS_QUERY_EXPLORERS.periodo(periodo_alquiler, periodo_numero, periodo_fecha_inicio, periodo_fecha_fin, periodo_descripcion)
+    select distinct -- FK con alquiler,
+                    PAGO_ALQUILER_NRO_PERIODO,
+                    PAGO_ALQUILER_FEC_INI,
+                    PAGO_ALQUILER_FEC_FIN,
+                    PAGO_ALQUILER_DESC
+
+    from gd_esquema.Maestra
+    where 
+    	  PAGO_ALQUILER_NRO_PERIODO is not null
+      and PAGO_ALQUILER_FEC_INI is not null
+      and PAGO_ALQUILER_FEC_FIN is not null
+      and PAGO_ALQUILER_DESC is not null
+
+end
+go
+
+-- PAGO PERIODO
+
+create procedure LOS_QUERY_EXPLORERS.migracion_pago_periodo
+as
+begin
+    insert into LOS_QUERY_EXPLORERS.pago_periodo(pago_periodo_id, pago_periodo_fecha, pago_periodo_periodo, pago_periodo_medio_de_pago, pago_periodo_importe)
+    select distinct PAGO_ALQUILER_CODIGO,
+					PAGO_ALQUILER_FECHA,
+					-- FK con periodo,
+					(select medio_de_pago_id from LOS_QUERY_EXPLORERS.medio_de_pago where medio_de_pago_nombre = PAGO_ALQUILER_MEDIO_PAGO)
+					-- FK con importe
+    from gd_esquema.Maestra
+    where PAGO_ALQUILER_CODIGO is not null
+
+end
+go 
+
+-- IMPORTE
+
+create procedure LOS_QUERY_EXPLORERS.migracion_importe
+as
+begin
+    insert into LOS_QUERY_EXPLORERS.importe(importe_periodo_inicio, importe_periodo_fin, importe_valor)
+    select distinct --FK con periodo (inicio),
+                    --FK con periodo (fin),
+                    PAGO_ALQUILER_IMPORTE
+
+    from gd_esquema.Maestra
+    where PAGO_ALQUILER_IMPORTE is not null
+
+end
+go
+
+
 --Ejecuciones de Stored Procedures
 
 exec LOS_QUERY_EXPLORERS.migracion_moneda
@@ -861,3 +998,9 @@ exec LOS_QUERY_EXPLORERS.migracion_comprador
 exec LOS_QUERY_EXPLORERS.migracion_sucursal
 exec LOS_QUERY_EXPLORERS.migracion_agente
 exec LOS_QUERY_EXPLORERS.migracion_inmueble
+-- exec LOS_QUERY_EXPLORERS.migracion_caraceristicasXInmueble
+-- exec LOS_QUERY_EXPLORERS.migracion_anuncio
+-- exec LOS_QUERY_EXPLORERS.migracion_periodo
+-- exec LOS_QUERY_EXPLORERS.migracion_pago_periodo
+-- exec LOS_QUERY_EXPLORERS.migracion_alquiler
+-- exec LOS_QUERY_EXPLORERS.migracion_importe
