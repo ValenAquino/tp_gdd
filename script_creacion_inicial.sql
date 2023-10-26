@@ -224,7 +224,7 @@ create table LOS_QUERY_EXPLORERS.medio_de_pago
 
 create table LOS_QUERY_EXPLORERS.pago_periodo
 (
-	pago_periodo_id numeric(18,0) identity(1,1) NOT NULL,
+	pago_periodo_id numeric(18,0) NOT NULL,
 	pago_periodo_fecha datetime NULL,
 	pago_periodo_periodo numeric(18,0) NOT NULL,
 	pago_periodo_medio_de_pago numeric(18,0) NOT NULL,
@@ -243,13 +243,13 @@ create table LOS_QUERY_EXPLORERS.pago_venta
 
 create table LOS_QUERY_EXPLORERS.venta
 (
-	venta_id numeric(18,0) NOT NULL,
+	venta_id numeric(18,0) identity(1,1) NOT NULL,
+	venta_codigo numeric(18,0) NOT NULL,
 	venta_anuncio numeric(19,0) NOT NULL,
 	venta_comprador numeric(18,0) NOT NULL,
 	venta_fecha datetime NULL,
 	venta_precio numeric(18,2) NULL,
 	venta_moneda_precio numeric(18,0) NOT NULL,
-	venta_pago numeric(18,0) NOT NULL,
 	venta_comision_inmobiliaria numeric(18,2) NULL
 )
 
@@ -478,18 +478,18 @@ foreign key (pago_periodo_periodo) references LOS_QUERY_EXPLORERS.periodo(period
 alter table LOS_QUERY_EXPLORERS.pago_periodo
 add constraint fk_pago_periodo_medio_de_pago
 foreign key (pago_periodo_medio_de_pago) references LOS_QUERY_EXPLORERS.medio_de_pago(medio_de_pago_id);
-
+/*
 alter table LOS_QUERY_EXPLORERS.pago_periodo
 add constraint fk_pago_periodo_importe
-foreign key (pago_periodo_importe) references LOS_QUERY_EXPLORERS.importe(importe_id);
-
-alter table LOS_QUERY_EXPLORERS.pago_venta
-add constraint fk_pago_venta_venta
-foreign key (pago_venta_venta) references LOS_QUERY_EXPLORERS.venta(venta_id);
+foreign key (pago_periodo_importe) references LOS_QUERY_EXPLORERS.importe(importe_id);*/
 
 alter table LOS_QUERY_EXPLORERS.pago_venta
 add constraint fk_pago_venta_moneda
 foreign key (pago_venta_moneda) references LOS_QUERY_EXPLORERS.moneda(moneda_id);
+
+alter table LOS_QUERY_EXPLORERS.pago_venta
+add constraint fk_pago_venta_venta
+foreign key (pago_venta_venta) references LOS_QUERY_EXPLORERS.venta(venta_id);
 
 alter table LOS_QUERY_EXPLORERS.pago_venta
 add constraint fk_pago_venta_medio_de_pago
@@ -506,10 +506,6 @@ foreign key (venta_comprador) references LOS_QUERY_EXPLORERS.comprador(comprador
 alter table LOS_QUERY_EXPLORERS.venta
 add constraint fk_venta_moneda_precio
 foreign key (venta_moneda_precio) references LOS_QUERY_EXPLORERS.moneda(moneda_id);
-
-alter table LOS_QUERY_EXPLORERS.venta
-add constraint fk_venta_pago
-foreign key (venta_pago) references LOS_QUERY_EXPLORERS.pago_venta(pago_venta_id);
 
 -- Migracion de datos - Creacion de Stored Procedures
 
@@ -901,9 +897,6 @@ end
 go
 
 -- ALQUILER
--- FALTA ALQUILER INQUILINO, pero no está en ninguna otra columna de la tabla maestra...
--- debería estar pero no encontré nada que referencie a quien alquila cada alquiler.
-
 create procedure LOS_QUERY_EXPLORERS.migracion_alquiler
 as
 begin
@@ -927,8 +920,6 @@ begin
 end
 go
 
-
-
 -- PERIODO
 
 create procedure LOS_QUERY_EXPLORERS.migracion_periodo
@@ -947,9 +938,8 @@ begin
 end
 go
 
-/*
 -- PAGO PERIODO
-
+go
 create procedure LOS_QUERY_EXPLORERS.migracion_pago_periodo
 as
 begin
@@ -961,14 +951,50 @@ begin
 																			  periodo_fecha_inicio = M.PAGO_ALQUILER_FEC_INI and
 																			  periodo_fecha_fin = M.PAGO_ALQUILER_FEC_FIN and
 																			  periodo_descripcion = M.PAGO_ALQUILER_DESC),
-					(select medio_de_pago_id from LOS_QUERY_EXPLORERS.medio_de_pago where medio_de_pago_nombre = PAGO_ALQUILER_MEDIO_PAGO)
-					-- FK con importe
+					(select medio_de_pago_id from LOS_QUERY_EXPLORERS.medio_de_pago where medio_de_pago_nombre = M.PAGO_ALQUILER_MEDIO_PAGO),
+					M.PAGO_ALQUILER_IMPORTE
     from gd_esquema.Maestra M
     where M.PAGO_ALQUILER_CODIGO is not null
-
 end
-go 
+go
 
+-- VENTA
+create procedure LOS_QUERY_EXPLORERS.migracion_venta
+as
+begin
+    insert into LOS_QUERY_EXPLORERS.venta(venta_codigo, venta_anuncio, venta_comprador, venta_fecha, venta_precio, venta_moneda_precio, venta_comision_inmobiliaria)
+    select distinct VENTA_CODIGO,
+					ANUNCIO_CODIGO,
+					(select comprador_id from LOS_QUERY_EXPLORERS.comprador where comprador_persona = (select persona_id from LOS_QUERY_EXPLORERS.persona where (persona_nombre = COMPRADOR_NOMBRE) and (persona_apellido = COMPRADOR_APELLIDO) and (persona_dni = COMPRADOR_DNI) and
+					(persona_fecha_nacimiento = COMPRADOR_FECHA_NAC) and (persona_mail = COMPRADOR_MAIL) and (persona_telefono = COMPRADOR_TELEFONO) and (persona_fecha_registro = COMPRADOR_FECHA_REGISTRO))),
+					VENTA_FECHA,
+					VENTA_PRECIO_VENTA,
+					(select moneda_id from LOS_QUERY_EXPLORERS.moneda where moneda_nombre = VENTA_MONEDA),
+					VENTA_COMISION
+    from gd_esquema.Maestra
+    where 
+    	  VENTA_CODIGO is not null and ANUNCIO_CODIGO is not null
+end
+go
+
+-- PAGO VENTA
+create procedure LOS_QUERY_EXPLORERS.migracion_pago_venta
+as
+begin
+    insert into LOS_QUERY_EXPLORERS.pago_venta(pago_venta_venta, pago_venta_importe, pago_venta_moneda, pago_venta_cotizacion, pago_venta_medio_de_pago)
+    select distinct 
+					(select venta_id from LOS_QUERY_EXPLORERS.venta where venta_codigo = Maestra.VENTA_CODIGO),
+					PAGO_VENTA_IMPORTE,
+					(select moneda_id from LOS_QUERY_EXPLORERS.moneda where moneda_nombre = PAGO_VENTA_MONEDA),
+					PAGO_VENTA_COTIZACION,
+					(select medio_de_pago_id from LOS_QUERY_EXPLORERS.medio_de_pago where medio_de_pago_nombre = PAGO_VENTA_MEDIO_PAGO)
+    from gd_esquema.Maestra
+    where 
+    	  VENTA_CODIGO is not null
+end
+go
+
+/*
 -- IMPORTE
 
 create procedure LOS_QUERY_EXPLORERS.migracion_importe
@@ -983,8 +1009,9 @@ begin
     where PAGO_ALQUILER_IMPORTE is not null
 
 end
-go
-*/
+go*/
+
+
 --Ejecuciones de Stored Procedures
 
 exec LOS_QUERY_EXPLORERS.migracion_moneda
@@ -1013,5 +1040,6 @@ exec LOS_QUERY_EXPLORERS.migracion_caracteristicasXInmueble
 exec LOS_QUERY_EXPLORERS.migracion_anuncio
 exec LOS_QUERY_EXPLORERS.migracion_alquiler
 exec LOS_QUERY_EXPLORERS.migracion_periodo
--- exec LOS_QUERY_EXPLORERS.migracion_pago_periodo
--- exec LOS_QUERY_EXPLORERS.migracion_importe
+exec LOS_QUERY_EXPLORERS.migracion_venta
+exec LOS_QUERY_EXPLORERS.migracion_pago_venta
+exec LOS_QUERY_EXPLORERS.migracion_pago_periodo
