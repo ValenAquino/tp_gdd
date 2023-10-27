@@ -793,7 +793,7 @@ begin
     select distinct INMUEBLE_CODIGO, 
                     (select tipo_inmueble_id from LOS_QUERY_EXPLORERS.tipo_inmueble where tipo_inmueble_nombre = INMUEBLE_TIPO_INMUEBLE),
                     INMUEBLE_DESCRIPCION,
-                    (select propietario_id from LOS_QUERY_EXPLORERS.propietario where propietario_persona = (select persona_id from persona where (persona_apellido = PROPIETARIO_APELLIDO) and (persona_dni = PROPIETARIO_DNI))),
+                    (select propietario_id from LOS_QUERY_EXPLORERS.propietario where propietario_persona = (select persona_id from LOS_QUERY_EXPLORERS.persona where (persona_apellido = PROPIETARIO_APELLIDO) and (persona_dni = PROPIETARIO_DNI))),
                     INMUEBLE_DIRECCION,
 					(select provincia_id from LOS_QUERY_EXPLORERS.provincia where provincia_nombre = INMUEBLE_PROVINCIA),
                     (select localidad_id from LOS_QUERY_EXPLORERS.localidad where localidad_nombre = INMUEBLE_LOCALIDAD),
@@ -965,6 +965,15 @@ print('Creacion de indices');
 
 CREATE INDEX IX_Inquilino_inquilino_persona
 ON LOS_QUERY_EXPLORERS.inquilino (inquilino_persona);
+
+CREATE INDEX IX_Inquilino_propietario_persona
+ON LOS_QUERY_EXPLORERS.propietario (propietario_persona);
+
+CREATE INDEX IX_Inquilino_comprador_persona
+ON LOS_QUERY_EXPLORERS.comprador (comprador_persona);
+
+CREATE INDEX IX_Inquilino_agente_persona
+ON LOS_QUERY_EXPLORERS.agente (agente_persona);
 
 CREATE INDEX IX_Persona_persona_nombre_apellido_dni_fecha_registro
 ON LOS_QUERY_EXPLORERS.persona (persona_nombre, persona_apellido, persona_dni, persona_fecha_registro);
