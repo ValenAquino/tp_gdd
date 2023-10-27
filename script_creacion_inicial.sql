@@ -4,12 +4,13 @@ go
 --Creacion de esquema
 if exists (select name from sys.schemas where name = 'LOS_QUERY_EXPLORERS')
     drop schema LOS_QUERY_EXPLORERS;
+print('Creacion de schema');
 go
-
 create schema LOS_QUERY_EXPLORERS;
 go
 
 --Creacion de tablas
+print('Creacion de tablas');
 
 create table LOS_QUERY_EXPLORERS.moneda
 (
@@ -208,14 +209,6 @@ create table LOS_QUERY_EXPLORERS.periodo
 	periodo_descripcion nvarchar(100) NULL
 )
 
-create table LOS_QUERY_EXPLORERS.importe
-(
-	importe_id numeric(18,0) identity(1,1) NOT NULL,
-	importe_periodo_inicio numeric(18,0) NOT NULL,
-	importe_periodo_fin numeric(18,0) NOT NULL,
-	importe_valor numeric(18,2) NULL
-)
-
 create table LOS_QUERY_EXPLORERS.medio_de_pago
 (
 	medio_de_pago_id numeric(18,0) identity(1,1) NOT NULL,
@@ -256,6 +249,7 @@ create table LOS_QUERY_EXPLORERS.venta
 go
 
 --Creacion de PK
+print('Creacion de Primary Keys');
 
 alter table LOS_QUERY_EXPLORERS.moneda
 add primary key (moneda_id);
@@ -332,9 +326,6 @@ add primary key (alquiler_id);
 alter table LOS_QUERY_EXPLORERS.periodo
 add primary key (periodo_id);
 
-alter table LOS_QUERY_EXPLORERS.importe
-add primary key (importe_id);
-
 alter table LOS_QUERY_EXPLORERS.medio_de_pago
 add primary key (medio_de_pago_id);
 
@@ -350,6 +341,7 @@ add primary key (venta_id);
 go
 
 --Creacion de FK y Constraints
+print('Creacion de FK y Constraints');
 
 alter table LOS_QUERY_EXPLORERS.inquilino
 add constraint fk_inquilino_persona
@@ -463,14 +455,6 @@ alter table LOS_QUERY_EXPLORERS.periodo
 add constraint fk_periodo_alquiler
 foreign key (periodo_alquiler) references LOS_QUERY_EXPLORERS.alquiler(alquiler_id);
 
-alter table LOS_QUERY_EXPLORERS.importe
-add constraint fk_importe_periodo_inicio
-foreign key (importe_periodo_inicio) references LOS_QUERY_EXPLORERS.periodo(periodo_id);
-
-alter table LOS_QUERY_EXPLORERS.importe
-add constraint fk_importe_periodo_fin
-foreign key (importe_periodo_fin) references LOS_QUERY_EXPLORERS.periodo(periodo_id);
-
 alter table LOS_QUERY_EXPLORERS.pago_periodo
 add constraint fk_pago_periodo_periodo
 foreign key (pago_periodo_periodo) references LOS_QUERY_EXPLORERS.periodo(periodo_id);
@@ -478,10 +462,6 @@ foreign key (pago_periodo_periodo) references LOS_QUERY_EXPLORERS.periodo(period
 alter table LOS_QUERY_EXPLORERS.pago_periodo
 add constraint fk_pago_periodo_medio_de_pago
 foreign key (pago_periodo_medio_de_pago) references LOS_QUERY_EXPLORERS.medio_de_pago(medio_de_pago_id);
-/*
-alter table LOS_QUERY_EXPLORERS.pago_periodo
-add constraint fk_pago_periodo_importe
-foreign key (pago_periodo_importe) references LOS_QUERY_EXPLORERS.importe(importe_id);*/
 
 alter table LOS_QUERY_EXPLORERS.pago_venta
 add constraint fk_pago_venta_moneda
@@ -508,6 +488,7 @@ add constraint fk_venta_moneda_precio
 foreign key (venta_moneda_precio) references LOS_QUERY_EXPLORERS.moneda(moneda_id);
 
 -- Migracion de datos - Creacion de Stored Procedures
+print('Creacion de Stored Procedures');
 
 --MONEDA
 go
@@ -834,18 +815,6 @@ end
 go
 
 -- CARACTERISTICASXINMUEBLE
-
-------- CARACTERISTICAS
--- 0: NINGUNCA
--- 1: CABLE
--- 2: CALEFACCION
--- 3: GAS
--- 4: WIFI
-
---	 Se crea una "fila" por cada caracteristica de cada inmueble.
----- Si no tiene ninguno, no se crea ninguna.
----- Si tiene LUZ y GAS, se crean 2. Una para luz, otra para gas.
-
 go 
 
 create procedure LOS_QUERY_EXPLORERS.migracion_caracteristicasXInmueble
@@ -867,8 +836,6 @@ begin
 	(	select distinct 4, INMUEBLE_CODIGO
 		from gd_esquema.Maestra
 		where INMUEBLE_CARACTERISTICA_WIFI = 1 )
-
-
 end
 go
 
@@ -905,8 +872,8 @@ begin
     alquiler_gastos_de_averiguaciones, alquiler_estado)
     select distinct M.ALQUILER_CODIGO,
 					M.ANUNCIO_CODIGO,
-					(select inquilino_id from LOS_QUERY_EXPLORERS.inquilino where inquilino_persona = (select persona_id from LOS_QUERY_EXPLORERS.persona where (persona_nombre = M.INQUILINO_NOMBRE) and (persona_apellido = M.INQUILINO_APELLIDO) and (persona_dni = M.INQUILINO_DNI) and
-					(persona_fecha_nacimiento = M.INQUILINO_FECHA_NAC) and (persona_mail = M.INQUILINO_MAIL) and (persona_telefono = M.INQUILINO_TELEFONO) and (persona_fecha_registro = M.INQUILINO_FECHA_REGISTRO))),
+					(select inquilino_id from LOS_QUERY_EXPLORERS.inquilino where inquilino_persona = (select persona_id from LOS_QUERY_EXPLORERS.persona where persona_nombre = M.INQUILINO_NOMBRE and persona_apellido = M.INQUILINO_APELLIDO and persona_dni = M.INQUILINO_DNI and
+					persona_fecha_registro = M.INQUILINO_FECHA_REGISTRO)),
                     M.ALQUILER_FECHA_INICIO,
                     M.ALQUILER_FECHA_FIN,
                     M.ALQUILER_CANT_PERIODOS,
@@ -916,7 +883,6 @@ begin
                     (select estado_alquiler_id from LOS_QUERY_EXPLORERS.estado_alquiler where estado_alquiler_nombre = M.ALQUILER_ESTADO)
     from gd_esquema.Maestra M
     where M.ALQUILER_CODIGO is not null and M.ANUNCIO_CODIGO is not null
-
 end
 go
 
@@ -994,25 +960,21 @@ begin
 end
 go
 
-/*
--- IMPORTE
+-- CREACION DE INDICES
+print('Creacion de indices');
 
-create procedure LOS_QUERY_EXPLORERS.migracion_importe
-as
-begin
-    insert into LOS_QUERY_EXPLORERS.importe(importe_periodo_inicio, importe_periodo_fin, importe_valor)
-    select distinct --FK con periodo (inicio),
-                    --FK con periodo (fin),
-                    PAGO_ALQUILER_IMPORTE
+CREATE INDEX IX_Inquilino_inquilino_persona
+ON LOS_QUERY_EXPLORERS.inquilino (inquilino_persona);
 
-    from gd_esquema.Maestra
-    where PAGO_ALQUILER_IMPORTE is not null
+CREATE INDEX IX_Persona_persona_nombre_apellido_dni_fecha_registro
+ON LOS_QUERY_EXPLORERS.persona (persona_nombre, persona_apellido, persona_dni, persona_fecha_registro);
 
-end
-go*/
+CREATE INDEX IX_EstadoAlquiler_estado_alquiler_nombre
+ON LOS_QUERY_EXPLORERS.estado_alquiler (estado_alquiler_nombre);
 
 
 --Ejecuciones de Stored Procedures
+print('Ejecucion de los Stored Procedure');
 
 exec LOS_QUERY_EXPLORERS.migracion_moneda
 exec LOS_QUERY_EXPLORERS.migracion_tipo_operacion
