@@ -487,12 +487,12 @@ alter table LOS_QUERY_EXPLORERS.venta
 add constraint fk_venta_moneda_precio
 foreign key (venta_moneda_precio) references LOS_QUERY_EXPLORERS.moneda(moneda_id);
 
+
 -- Migracion de datos - Creacion de Stored Procedures
 print('Creacion de Stored Procedures');
 
 --MONEDA
 go
-
 create procedure LOS_QUERY_EXPLORERS.migracion_moneda
 as
 begin 
@@ -596,7 +596,6 @@ begin
 end
 go
 
-
 -- BARRIO
 create procedure LOS_QUERY_EXPLORERS.migracion_barrio
 as
@@ -632,10 +631,11 @@ begin
     insert into LOS_QUERY_EXPLORERS.provincia (provincia_nombre)
     select distinct INMUEBLE_PROVINCIA
     from gd_esquema.Maestra
+	where INMUEBLE_PROVINCIA is not null
 	union
 	select distinct SUCURSAL_PROVINCIA
     from gd_esquema.Maestra
-    where INMUEBLE_PROVINCIA is not null and SUCURSAL_PROVINCIA is not null
+    where SUCURSAL_PROVINCIA is not null
 
 end
 go
@@ -693,7 +693,7 @@ begin
 end
 go
 
--- PERSONA
+--PERSONA
 create procedure LOS_QUERY_EXPLORERS.migracion_persona
 as
 begin
@@ -784,7 +784,6 @@ begin
 end
 go
 
-
 --INMUEBLE
 create procedure LOS_QUERY_EXPLORERS.migracion_inmueble
 as
@@ -814,9 +813,7 @@ begin
 end
 go
 
--- CARACTERISTICASXINMUEBLE
-go 
-
+--CARACTERISTICASXINMUEBLE
 create procedure LOS_QUERY_EXPLORERS.migracion_caracteristicasXInmueble
 as
 begin
@@ -839,7 +836,7 @@ begin
 end
 go
 
--- MIGRACION ANUNCIO
+--ANUNCIO
 create procedure LOS_QUERY_EXPLORERS.migracion_anuncio
 as
 begin
@@ -887,7 +884,6 @@ end
 go
 
 -- PERIODO
-
 create procedure LOS_QUERY_EXPLORERS.migracion_periodo
 as
 begin
@@ -960,7 +956,7 @@ begin
 end
 go
 
--- CREACION DE INDICES
+-- Creacion de indices
 print('Creacion de indices');
 
 CREATE INDEX IX_Inquilino_inquilino_persona
