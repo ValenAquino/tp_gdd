@@ -44,8 +44,7 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
 (
     BI_rango_etario_id int identity (1,1) not null,
-    BI_rango_etario_inquilino nvarchar(100),
-    BI_rango_etario_agente nvarchar(100)
+    BI_rango_etario_detalle nvarchar (100)
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble
@@ -70,8 +69,6 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal
 (
     BI_sucursal_id int identity (1,1) not null,
     BI_sucursal_nombre nvarchar(100),
-    BI_sucursal_direccion nvarchar(100),
-    BI_sucursal_telefono nvarchar(100),
     BI_sucursal_ubicacion int not null
 )
 
@@ -92,14 +89,66 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino
 (
     BI_inquilino_id int identity (1,1) not null,
-    BI_inquilino_fecha_de_nacimiento DATETIME
+    BI_inquilino_rango_etario int not null
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
 (
     BI_agente_id int identity (1,1) not null,
-    BI_agente_fecha_de_nacimiento DATETIME,
+    BI_agente_rango_etario int not null,
     BI_agente_sucursal int not null
+)
+
+create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
+(
+    BI_periodo_id int identity (1,1) not null,
+    BI_periodo_alquiler int not null,
+    BI_periodo_fecha_inicio datetime,
+    BI_periodo_fecha_fin datetime
+)
+
+create table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
+(
+    BI_alquiler_id int identity (1,1) not null,
+    BI_alquiler_ubicacion int not null,
+    BI_alquiler_inmueble int not null,
+    BI_alquiler_inquilino int not null,
+    BI_alquiler_tiempo int not null,
+    BI_alquiler_estado nvarchar(100),
+    BI_alquiler_comision numeric(18,2)
+)
+
+create table LOS_QUERY_EXPLORERS_BI.BI_Venta
+(
+    BI_venta_id int identity (1,1) not null,
+    BI_venta_fecha datetime,
+    BI_venta_ubicacion int not null,
+    BI_venta_precio numeric(18,2),
+    BI_venta_tipo_moneda int not null,
+    BI_venta_inmueble int not null,
+    BI_venta_comision numeric(18,2)
+)
+
+create table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+(
+    BI_anuncio_id int identity (1,1) not null,
+    BI_anuncio_fecha_publicacion datetime,
+    BI_anuncio_ubicacion int not null,
+    BI_anuncio_tipo_operacion int not null,
+    BI_anuncio_inmueble int not null,
+    BI_anuncio_tiempo int not null,
+    BI_anuncio_fecha_finalizacion datetime,
+    BI_anuncio_tipo_moneda int not null,
+    BI_anuncio_agente int not null,
+    BI_anuncio_costo_publicacion numeric(18,2)
+)
+
+create table LOS_QUERY_EXPLORERS_BI.BI_Pago_Periodo
+(
+    BI_pago_periodo_id int identity (1,1) not null,
+    BI_pago_periodo_importe numeric(18,0),
+    BI_pago_alquiler_fecha datetime,
+    BI_pago_periodo_periodo int not null
 )
 
 print 'Tablas creadas'
@@ -156,6 +205,27 @@ add primary key (BI_inquilino_id);
 alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
 add primary key (BI_agente_id);
 
+-- Dimension Periodo
+alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
+add primary key (BI_periodo_id);
+
+-- Dimension Alquiler
+alter table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
+add primary key (BI_alquiler_id);
+
+-- Dimension Venta
+alter table LOS_QUERY_EXPLORERS_BI.BI_Venta
+add primary key (BI_venta_id);
+
+-- Dimension Anuncio
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add primary key (BI_anuncio_id);
+
+-- Dimension Pago Periodo
+alter table LOS_QUERY_EXPLORERS_BI.BI_Pago_Periodo
+add primary key (BI_pago_periodo_id);
+
+
 print 'Primary Key creadas'
 go
 
@@ -191,6 +261,29 @@ alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
 add constraint FK_BI_Agente_BI_Sucursal
 foreign key (BI_agente_sucursal)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal (BI_sucursal_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
+add constraint FK_BI_Agente_BI_Rango_Etario
+foreign key (BI_agente_rango_etario)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario (BI_rango_etario_id);
+
+-- Inquilino
+alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino
+add constraint FK_BI_Inquilino_BI_Rango_Etario
+foreign key (BI_inquilino_rango_etario)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario (BI_rango_etario_id);
+
+-- Periodo
+alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
+add constraint FK_BI_Periodo_BI_Alquiler
+foreign key (BI_periodo_alquiler)
+references LOS_QUERY_EXPLORERS_BI.BI_Alquiler (BI_alquiler_id);
+
+-- Pago Periodo
+alter table LOS_QUERY_EXPLORERS_BI.BI_Pago_Periodo
+add constraint FK_BI_Pago_Periodo_BI_Periodo
+foreign key (BI_pago_periodo_periodo)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo (BI_periodo_id);
 
 -- CREACION PROCEDURE MIGRACION
 
