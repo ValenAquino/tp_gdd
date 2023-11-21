@@ -285,6 +285,77 @@ add constraint FK_BI_Pago_Periodo_BI_Periodo
 foreign key (BI_pago_periodo_periodo)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo (BI_periodo_id);
 
+-- Alquiler
+alter table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
+add constraint FK_BI_Alquiler_BI_Ubicacion
+foreign key (BI_alquiler_ubicacion)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
+add constraint FK_BI_Alquiler_BI_Inmueble
+foreign key (BI_alquiler_inmueble)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble (BI_inmueble_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
+add constraint FK_BI_Alquiler_BI_Inquilino
+foreign key (BI_alquiler_inquilino)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino (BI_inquilino_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
+add constraint FK_BI_Alquiler_BI_Tiempo
+foreign key (BI_alquiler_tiempo)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo (BI_tiempo_id);
+
+-- Venta
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Venta
+add constraint FK_BI_Venta_BI_Ubicacion
+foreign key (BI_venta_ubicacion)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Venta
+add constraint FK_BI_Venta_BI_Tipo_Moneda
+foreign key (BI_venta_tipo_moneda)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda (BI_tipo_moneda_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Venta
+add constraint FK_BI_Venta_BI_Inmueble
+foreign key (BI_venta_inmueble)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble (BI_inmueble_id);
+
+-- Anuncio
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add constraint FK_BI_Anuncio_BI_Ubicacion
+foreign key (BI_anuncio_ubicacion)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add constraint FK_BI_Anuncio_BI_Tipo_Operacion
+foreign key (BI_anuncio_tipo_operacion)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion (BI_tipo_operacion_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add constraint FK_BI_Anuncio_BI_Inmueble
+foreign key (BI_anuncio_inmueble)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble (BI_inmueble_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add constraint FK_BI_Anuncio_BI_Tiempo
+foreign key (BI_anuncio_tiempo)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo (BI_tiempo_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add constraint FK_BI_Anuncio_BI_Tipo_Moneda
+foreign key (BI_anuncio_tipo_moneda)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda (BI_tipo_moneda_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add constraint FK_BI_Anuncio_BI_Agente
+foreign key (BI_anuncio_agente)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente(BI_agente_id);
+
+
 -- CREACION PROCEDURE MIGRACION
 
 -- EJECUCIONES DE PROCEDURES
