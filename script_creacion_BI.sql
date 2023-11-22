@@ -365,7 +365,7 @@ CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_BI_Dim_Tipo_Moneda
 AS
 BEGIN
 	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda(BI_tipo_moneda_nombre)
-	SELECT moneda_nombre
+	SELECT DISTINCT moneda_nombre
 	FROM LOS_QUERY_EXPLORERS.moneda
 END
 GO
@@ -374,7 +374,7 @@ CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Operacion
 AS
 BEGIN
 	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion(BI_tipo_operacion_nombre)
-	SELECT tipo_operacion_nombre
+	SELECT DISTINCT tipo_operacion_nombre
 	FROM LOS_QUERY_EXPLORERS.tipo_operacion
 END
 GO
@@ -422,15 +422,6 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Ambientes
-AS
-BEGIN
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes(BI_ambientes_numero)
-	SELECT ambientes_numero
-	FROM LOS_QUERY_EXPLORERS.ambientes
-END
-GO
-
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Inmueble
 AS
 BEGIN
@@ -463,6 +454,98 @@ BEGIN
 END
 GO
 
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.migracion_BI_Dim_Tiempo
+AS
+BEGIN
+    insert into LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo (BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_tiempo_mes)
+    select distinct YEAR(anuncio_fecha_publicacion),
+    (CASE 
+    WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3 
+    END),
+    MONTH(anuncio_fecha_publicacion)
+    from LOS_QUERY_EXPLORERS.anuncio
+
+    UNION
+
+    select distinct YEAR(anuncio_fecha_finalizacion),
+    (CASE 
+    WHEN month(anuncio_fecha_finalizacion) >= 1 AND month(anuncio_fecha_finalizacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_finalizacion) >= 5 AND month(anuncio_fecha_finalizacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_finalizacion) >= 9 AND month(anuncio_fecha_finalizacion) <= 12 THEN 3 
+    END),
+    MONTH(anuncio_fecha_finalizacion)
+    from LOS_QUERY_EXPLORERS.anuncio
+
+    UNION
+
+    select distinct YEAR(alquiler_fecha_inicio),
+    (CASE 
+    WHEN month(alquiler_fecha_inicio) >= 1 AND month(alquiler_fecha_inicio) <= 4 THEN 1
+    WHEN month(alquiler_fecha_inicio) >= 5 AND month(alquiler_fecha_inicio) <= 8 THEN 2
+    WHEN month(alquiler_fecha_inicio) >= 9 AND month(alquiler_fecha_inicio) <= 12 THEN 3 
+    END),
+    MONTH(alquiler_fecha_inicio)
+    from LOS_QUERY_EXPLORERS.alquiler
+
+    UNION
+
+    select distinct YEAR(alquiler_fecha_fin),
+    (CASE 
+    WHEN month(alquiler_fecha_fin) >= 1 AND month(alquiler_fecha_fin) <= 4 THEN 1
+    WHEN month(alquiler_fecha_fin) >= 5 AND month(alquiler_fecha_fin) <= 8 THEN 2
+    WHEN month(alquiler_fecha_fin) >= 9 AND month(alquiler_fecha_fin) <= 12 THEN 3 
+    END),
+    MONTH(alquiler_fecha_fin)
+    from LOS_QUERY_EXPLORERS.alquiler
+
+    UNION
+
+    select distinct YEAR(periodo_fecha_inicio),
+    (CASE 
+    WHEN month(periodo_fecha_inicio) >= 1 AND month(periodo_fecha_inicio) <= 4 THEN 1
+    WHEN month(periodo_fecha_inicio) >= 5 AND month(periodo_fecha_inicio) <= 8 THEN 2
+    WHEN month(periodo_fecha_inicio) >= 9 AND month(periodo_fecha_inicio) <= 12 THEN 3 
+    END),
+    MONTH(periodo_fecha_inicio)
+    from LOS_QUERY_EXPLORERS.periodo
+
+    UNION
+
+    select distinct YEAR(periodo_fecha_fin),
+    (CASE 
+    WHEN month(periodo_fecha_fin) >= 1 AND month(periodo_fecha_fin) <= 4 THEN 1
+    WHEN month(periodo_fecha_fin) >= 5 AND month(periodo_fecha_fin) <= 8 THEN 2
+    WHEN month(periodo_fecha_fin) >= 9 AND month(periodo_fecha_fin) <= 12 THEN 3 
+    END),
+    MONTH(periodo_fecha_fin)
+    from LOS_QUERY_EXPLORERS.periodo
+
+    UNION
+
+    select distinct YEAR(pago_periodo_fecha),
+    (CASE 
+    WHEN month(pago_periodo_fecha) >= 1 AND month(pago_periodo_fecha) <= 4 THEN 1
+    WHEN month(pago_periodo_fecha) >= 5 AND month(pago_periodo_fecha) <= 8 THEN 2
+    WHEN month(pago_periodo_fecha) >= 9 AND month(pago_periodo_fecha) <= 12 THEN 3 
+    END),
+    MONTH(pago_periodo_fecha)
+    from LOS_QUERY_EXPLORERS.pago_periodo
+    UNION
+
+    select distinct YEAR(venta_fecha),
+    (CASE 
+    WHEN month(venta_fecha) >= 1 AND month(venta_fecha) <= 4 THEN 1
+    WHEN month(venta_fecha) >= 5 AND month(venta_fecha) <= 8 THEN 2
+    WHEN month(venta_fecha) >= 9 AND month(venta_fecha) <= 12 THEN 3 
+    END),
+    MONTH(venta_fecha)
+    from LOS_QUERY_EXPLORERS.venta
+
+END
+GO
+
 print 'Procedimientos de migracion creados'
 go
 
@@ -479,6 +562,7 @@ exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Ambientes
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Inmueble
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_Etario
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_m2
+exec LOS_QUERY_EXPLORERS_BI.migracion_BI_Dim_Tiempo
 
 print 'Modelo BI Creado'
 go
@@ -494,3 +578,4 @@ select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
