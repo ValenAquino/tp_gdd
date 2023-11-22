@@ -30,9 +30,9 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion
 (
     BI_ubicacion_id int identity (1,1) not null,
-    BI_ubicacion_provincia numeric(18,0),
-    BI_ubicacion_localidad numeric(18,0),
-    BI_ubicacion_barrio numeric(18,0)
+    BI_ubicacion_provincia nvarchar(100),
+    BI_ubicacion_localidad nvarchar(100),
+    BI_ubicacion_barrio nvarchar(100)
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion
@@ -358,6 +358,139 @@ references LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente(BI_agente_id);
 
 -- CREACION PROCEDURE MIGRACION
 
+print 'Creacion Procedimientos de migracion'
+go
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_BI_Dim_Tipo_Moneda
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda(BI_tipo_moneda_nombre)
+	SELECT moneda_nombre
+	FROM LOS_QUERY_EXPLORERS.moneda
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Operacion
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion(BI_tipo_operacion_nombre)
+	SELECT tipo_operacion_nombre
+	FROM LOS_QUERY_EXPLORERS.tipo_operacion
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Ubicacion
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion(BI_ubicacion_provincia, BI_ubicacion_localidad, BI_ubicacion_barrio)
+
+	SELECT distinct provincia_nombre, localidad_nombre, barrio_nombre
+	FROM LOS_QUERY_EXPLORERS.inmueble
+	JOIN LOS_QUERY_EXPLORERS.provincia on inmueble_provincia = provincia_id
+	JOIN LOS_QUERY_EXPLORERS.localidad on inmueble_localidad = localidad_id
+	JOIN LOS_QUERY_EXPLORERS.barrio on inmueble_barrio = barrio_id
+
+	UNION
+
+	SELECT distinct provincia_nombre, localidad_nombre, null
+	FROM LOS_QUERY_EXPLORERS.sucursal
+	JOIN LOS_QUERY_EXPLORERS.provincia on sucursal_provincia = provincia_id
+	JOIN LOS_QUERY_EXPLORERS.localidad on sucursal_localidad = localidad_id
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Sucursal
+AS
+BEGIN
+    INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal(BI_sucursal_nombre, BI_sucursal_ubicacion)
+
+    SELECT sucursal_nombre, bi_ubicacion_id
+    FROM LOS_QUERY_EXPLORERS.sucursal
+    JOIN LOS_QUERY_EXPLORERS.provincia on sucursal_provincia = provincia_id
+	JOIN LOS_QUERY_EXPLORERS.localidad on sucursal_localidad = localidad_id
+    JOIN LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion on localidad_nombre = BI_ubicacion_localidad and provincia_nombre = BI_ubicacion_provincia and BI_ubicacion_barrio is null
+
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Ambientes
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes(BI_ambientes_numero)
+	SELECT ambientes_numero
+	FROM LOS_QUERY_EXPLORERS.ambientes
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Ambientes
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes(BI_ambientes_numero)
+	SELECT ambientes_numero
+	FROM LOS_QUERY_EXPLORERS.ambientes
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Inmueble
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble(BI_tipo_inmueble_nombre)
+	SELECT tipo_inmueble_nombre
+	FROM LOS_QUERY_EXPLORERS.tipo_inmueble
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_Etario
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario(BI_rango_etario_detalle)
+	VALUES ('< 25'),
+	       ('25 - 35'),
+	       ('35 - 50'),
+	       ('> 50')
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_m2
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2(BI_rango_m2_numero)
+	VALUES ('< 35'),
+	       ('35 - 55'),
+	       ('55 - 75'),
+	       ('75 - 100'),
+	       ('> 100')
+END
+GO
+
+print 'Procedimientos de migracion creados'
+go
+
 -- EJECUCIONES DE PROCEDURES
 
+print 'Creando Modelo BI'
+go
+
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_BI_Dim_Tipo_Moneda
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Operacion
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Ubicacion
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Sucursal
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Ambientes
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Inmueble
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_Etario
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_m2
+
+print 'Modelo BI Creado'
+go
+
 -- CREACION DE VISTAS
+
+-- Pruebas
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
