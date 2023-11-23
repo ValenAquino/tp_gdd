@@ -454,7 +454,7 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.migracion_BI_Dim_Tiempo
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.Migrar_BI_Dim_Tiempo
 AS
 BEGIN
     insert into LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo (BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_tiempo_mes)
@@ -546,6 +546,56 @@ BEGIN
 END
 GO
 
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_inquilino
+AS
+BEGIN
+    DECLARE @Now DATETIME = getdate()
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_inquilino(BI_inquilino_rango_etario)
+	SELECT DISTINCT case
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
+    end
+    from LOS_QUERY_EXPLORERS.persona join LOS_QUERY_EXPLORERS.inquilino on inquilino_persona = persona_id
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Agente
+AS
+BEGIN
+    DECLARE @Now DATETIME = getdate()
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente(BI_agente_rango_etario, BI_agente_sucursal)
+	SELECT DISTINCT (case
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
+    end),
+    (select BI_sucursal_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal where BI_sucursal_nombre = sucursal_nombre)
+    from LOS_QUERY_EXPLORERS.persona join LOS_QUERY_EXPLORERS.agente A on A.agente_persona = persona_id
+    join LOS_QUERY_EXPLORERS.sucursal on sucursal_id = A.agente_sucursal
+END
+GO
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Inmueble
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble(BI_inmueble_tipo_inmueble, BI_inmueble_rango_m2, BI_inmueble_ambientes)
+	SELECT DISTINCT (select BI_tipo_inmueble_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble where BI_tipo_inmueble_nombre = tipo_inmueble_nombre),
+    CASE
+        WHEN inmueble_superficie_total < 35 then 1
+        WHEN inmueble_superficie_total >= 35 and inmueble_superficie_total < 55 then 2
+        WHEN inmueble_superficie_total >= 55 and inmueble_superficie_total < 75 then 3
+        WHEN inmueble_superficie_total >= 75 and inmueble_superficie_total < 100 then 4
+        WHEN inmueble_superficie_total >= 100 then 5
+     END,
+    (select BI_ambientes_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes where BI_ambientes_numero = ambientes_numero)
+	FROM LOS_QUERY_EXPLORERS.inmueble join LOS_QUERY_EXPLORERS.tipo_inmueble on inmueble_tipo_inmueble = tipo_inmueble_id
+    join LOS_QUERY_EXPLORERS.ambientes on inmueble_ambientes = ambientes_id
+END
+GO
+
 print 'Procedimientos de migracion creados'
 go
 
@@ -562,7 +612,10 @@ exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Ambientes
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Inmueble
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_Etario
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_m2
-exec LOS_QUERY_EXPLORERS_BI.migracion_BI_Dim_Tiempo
+exec LOS_QUERY_EXPLORERS_BI.Migrar_BI_Dim_Tiempo
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_inquilino
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Agente
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Inmueble
 
 print 'Modelo BI Creado'
 go
@@ -579,3 +632,5 @@ select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
