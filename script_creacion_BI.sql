@@ -81,9 +81,11 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble
 (
     BI_inmueble_id int identity (1,1) not null,
+    BI_inmueble_descripcion nvarchar(100),
     BI_inmueble_tipo_inmueble int not null,
     BI_inmueble_rango_m2 int not null,
-    BI_inmueble_ambientes int not null
+    BI_inmueble_ambientes int not null,
+    BI_inmueble_ubicacion int not null
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino
@@ -110,7 +112,6 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
 create table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
 (
     BI_alquiler_id int identity (1,1) not null,
-    BI_alquiler_ubicacion int not null,
     BI_alquiler_inmueble int not null,
     BI_alquiler_inquilino int not null,
     BI_alquiler_tiempo int not null,
@@ -133,7 +134,6 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 (
     BI_anuncio_id int identity (1,1) not null,
     BI_anuncio_fecha_publicacion datetime,
-    BI_anuncio_ubicacion int not null,
     BI_anuncio_tipo_operacion int not null,
     BI_anuncio_inmueble int not null,
     BI_anuncio_tiempo int not null,
@@ -256,6 +256,11 @@ add constraint FK_BI_Inmueble_BI_Ambientes
 foreign key (BI_inmueble_ambientes)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes (BI_ambientes_id);
 
+alter table LOS_QUERY_EXPLORERS_BI.BI_Inmueble
+add constraint FK_BI_Inmueble_BI_Ubicacion
+foreign key (BI_inmueble_ubicacion)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_id);
+
 -- Agente
 alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
 add constraint FK_BI_Agente_BI_Sucursal
@@ -286,10 +291,6 @@ foreign key (BI_pago_periodo_periodo)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo (BI_periodo_id);
 
 -- Alquiler
-alter table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
-add constraint FK_BI_Alquiler_BI_Ubicacion
-foreign key (BI_alquiler_ubicacion)
-references LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_id);
 
 alter table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
 add constraint FK_BI_Alquiler_BI_Inmueble
@@ -324,11 +325,6 @@ foreign key (BI_venta_inmueble)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble (BI_inmueble_id);
 
 -- Anuncio
-
-alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
-add constraint FK_BI_Anuncio_BI_Ubicacion
-foreign key (BI_anuncio_ubicacion)
-references LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_id);
 
 alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 add constraint FK_BI_Anuncio_BI_Tipo_Operacion
@@ -578,10 +574,11 @@ BEGIN
 END
 GO
 
+-- Dimension Inmueble
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Inmueble
 AS
 BEGIN
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble(BI_inmueble_tipo_inmueble, BI_inmueble_rango_m2, BI_inmueble_ambientes)
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble(BI_inmueble_tipo_inmueble, BI_inmueble_rango_m2, BI_inmueble_ambientes, BI_inmueble_ubicacion)
 	SELECT DISTINCT (select BI_tipo_inmueble_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble where BI_tipo_inmueble_nombre = tipo_inmueble_nombre),
     CASE
         WHEN inmueble_superficie_total < 35 then 1
@@ -590,11 +587,44 @@ BEGIN
         WHEN inmueble_superficie_total >= 75 and inmueble_superficie_total < 100 then 4
         WHEN inmueble_superficie_total >= 100 then 5
      END,
-    (select BI_ambientes_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes where BI_ambientes_numero = ambientes_numero)
+    (select BI_ambientes_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes where BI_ambientes_numero = ambientes_numero),
+    (select BI_ubicacion_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion where barrio_nombre = BI_ubicacion_barrio and provincia_nombre = BI_ubicacion_provincia and localidad_nombre = BI_ubicacion_localidad)
 	FROM LOS_QUERY_EXPLORERS.inmueble join LOS_QUERY_EXPLORERS.tipo_inmueble on inmueble_tipo_inmueble = tipo_inmueble_id
     join LOS_QUERY_EXPLORERS.ambientes on inmueble_ambientes = ambientes_id
+    join LOS_QUERY_EXPLORERS.barrio on barrio_id = inmueble_barrio
+    join LOS_QUERY_EXPLORERS.localidad on localidad_id = inmueble_localidad
+    join LOS_QUERY_EXPLORERS.provincia on provincia_id = inmueble_provincia
 END
 GO
+
+
+-- Tabla de hecho Anuncio
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Anuncio
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Anuncio(BI_anuncio_fecha_publicacion, BI_anuncio_tipo_operacion, BI_anuncio_inmueble, BI_anuncio_tiempo, BI_anuncio_fecha_finalizacion, BI_anuncio_tipo_moneda, BI_anuncio_agente, BI_anuncio_costo_publicacion)
+	SELECT DISTINCT anuncio_fecha_publicacion,
+    (select BI_tipo_operacion_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion where BI_tipo_operacion_nombre = tipo_operacion_nombre),
+    (select BI_inmueble_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble where BI_inmueble_descripcion = inmueble_descripcion),
+    (select BI_tiempo_id from BI_Dim_Tiempo where
+    year(anuncio_fecha_publicacion) = BI_tiempo_anio and month(anuncio_fecha_publicacion) = BI_tiempo_mes
+    AND
+    (CASE 
+    WHEN month(anuncio_fecha_finalizacion) >= 1 AND month(anuncio_fecha_finalizacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_finalizacion) >= 5 AND month(anuncio_fecha_finalizacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_finalizacion) >= 9 AND month(anuncio_fecha_finalizacion) <= 12 THEN 3 
+    END) = BI_tiempo_cuatrimestre),
+    anuncio_fecha_finalizacion,
+    (select BI_tipo_moneda_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda where BI_tipo_moneda_nombre = moneda_nombre),
+    --(select BI_agente_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente where ),
+    anuncio_costo_publicacion
+    from LOS_QUERY_EXPLORERS.anuncio join LOS_QUERY_EXPLORERS.tipo_operacion on tipo_operacion_id = anuncio_tipo_operacion
+    join LOS_QUERY_EXPLORERS.inmueble on inmueble_id = anuncio_inmueble 
+    join LOS_QUERY_EXPLORERS.moneda on moneda_id = anuncio_moneda
+    join LOS_QUERY_EXPLORERS.agente on agente_id = anuncio_agente
+END
+GO
+
 
 print 'Procedimientos de migracion creados'
 go
@@ -634,3 +664,4 @@ select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble
