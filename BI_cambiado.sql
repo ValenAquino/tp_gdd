@@ -604,6 +604,7 @@ BEGIN
         when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
         when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
     end)),
+    (select BI_inmueble_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble where BI_inmueble_descripcion = inmueble_descripcion),
     (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where 
     BI_tiempo_anio = year(alquiler_fecha_inicio) and BI_tiempo_mes = month(alquiler_fecha_inicio) and BI_tiempo_cuatrimestre = (CASE 
     WHEN month(alquiler_fecha_inicio) >= 1 AND month(alquiler_fecha_inicio) <= 4 THEN 1
@@ -619,12 +620,24 @@ BEGIN
     from LOS_QUERY_EXPLORERS.alquiler join LOS_QUERY_EXPLORERS.inquilino on alquiler_inquilino = inquilino_id
     join LOS_QUERY_EXPLORERS.persona on persona_id = inquilino_persona
     join LOS_QUERY_EXPLORERS.periodo on periodo_alquiler = alquiler_id
+    join LOS_QUERY_EXPLORERS.anuncio on anuncio_id = alquiler_anuncio
+    join LOS_QUERY_EXPLORERS.inmueble on inmueble_id = anuncio_inmueble
     group by alquiler_estado,
-    alquiler_comision_inmobiliaria, 
-    alquiler_fecha_inicio
+    alquiler_comision_inmobiliaria,
+    (case
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
+    end), 
+    year(alquiler_fecha_inicio), month(alquiler_fecha_inicio), (CASE 
+    WHEN month(alquiler_fecha_inicio) >= 1 AND month(alquiler_fecha_inicio) <= 4 THEN 1
+    WHEN month(alquiler_fecha_inicio) >= 5 AND month(alquiler_fecha_inicio) <= 8 THEN 2
+    WHEN month(alquiler_fecha_inicio) >= 9 AND month(alquiler_fecha_inicio) <= 12 THEN 3 
+    END),
+    periodo_id, periodo_fecha_inicio, periodo_fecha_fin, inmueble_descripcion
 END
 GO
-
 
 -- Tabla de hecho Anuncio
 ALTER PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Anuncio
@@ -662,7 +675,7 @@ BEGIN
     WHEN month(anuncio_fecha_finalizacion) >= 1 AND month(anuncio_fecha_finalizacion) <= 4 THEN 1
     WHEN month(anuncio_fecha_finalizacion) >= 5 AND month(anuncio_fecha_finalizacion) <= 8 THEN 2
     WHEN month(anuncio_fecha_finalizacion) >= 9 AND month(anuncio_fecha_finalizacion) <= 12 THEN 3 
-    END), anuncio_fecha_finalizacion, (case
+    END), anuncio_fecha_finalizacion, year(anuncio_fecha_publicacion), month(anuncio_fecha_finalizacion), (case
         when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
         when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
         when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
@@ -694,6 +707,7 @@ exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_inquilino
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Agente
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Inmueble
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Periodo
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Alquiler
 
 print 'Modelo BI Creado'
 go
@@ -713,3 +727,6 @@ select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
+select * from LOS_QUERY_EXPLORERS_BI.BI_Alquiler
+
