@@ -37,7 +37,7 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion
 (
-    BI_tipo_operacion_id int identity (1,1) not null,
+    BI_tipo_operacion_id int not null,
     BI_tipo_operacion_nombre nvarchar(100)
 )
 
@@ -49,13 +49,13 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble
 (
-    BI_tipo_inmueble_id int identity (1,1) not null,
+    BI_tipo_inmueble_id int not null,
     BI_tipo_inmueble_nombre nvarchar(100)
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda
 (
-    BI_tipo_moneda_id int identity (1,1) not null,
+    BI_tipo_moneda_id int not null,
     BI_tipo_moneda_nombre nvarchar(100)
 )
 
@@ -67,20 +67,20 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal
 (
-    BI_sucursal_id int identity (1,1) not null,
+    BI_sucursal_id int not null,
     BI_sucursal_nombre nvarchar(100),
     BI_sucursal_ubicacion int not null
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes
 (
-    BI_ambientes_id int identity (1,1) not null,
+    BI_ambientes_id int not null,
     BI_ambientes_numero nvarchar(100)
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble
 (
-    BI_inmueble_id int identity (1,1) not null,
+    BI_inmueble_id int not null,
     BI_inmueble_descripcion nvarchar(100),
     BI_inmueble_tipo_inmueble int not null,
     BI_inmueble_rango_m2 int not null,
@@ -90,20 +90,20 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino
 (
-    BI_inquilino_id int identity (1,1) not null,
+    BI_inquilino_id int not null,
     BI_inquilino_rango_etario int not null
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
 (
-    BI_agente_id int identity (1,1) not null,
+    BI_agente_id int not null,
     BI_agente_rango_etario int not null,
     BI_agente_sucursal int not null
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
 (
-    BI_periodo_id int identity (1,1) not null,
+    BI_periodo_id int not null,
     BI_periodo_fecha_inicio datetime,
     BI_periodo_fecha_fin datetime,
     BI_periodo_importe numeric(18,0),
@@ -137,9 +137,15 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
     BI_anuncio_tiempo int not null,
     BI_anuncio_tipo_moneda int not null,
     BI_anuncio_agente int not null,
-    BI_anuncio_fecha_publicacion datetime,
-    BI_anuncio_fecha_finalizacion datetime,
-    BI_anuncio_costo_publicacion numeric(18,2)
+    BI_anuncio_estado int not null,
+    BI_anuncio_costo_publicacion numeric(18,2),
+    BI_anuncio_duracion int,
+)
+
+create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio
+(
+    BI_estado_anuncio_id int not null,
+    BI_estado_anuncio_nombre nvarchar(100)
 )
 
 print 'Tablas creadas'
@@ -210,7 +216,11 @@ add primary key (BI_venta_ubicacion, BI_venta_tipo_moneda, BI_venta_inmueble);
 
 -- Dimension Anuncio
 alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
-add primary key (BI_anuncio_tipo_operacion, BI_anuncio_inmueble, BI_anuncio_tiempo, BI_anuncio_tipo_moneda, BI_anuncio_agente);
+add primary key (BI_anuncio_tipo_operacion, BI_anuncio_inmueble, BI_anuncio_tiempo, BI_anuncio_tipo_moneda, BI_anuncio_agente, BI_anuncio_estado);
+
+-- Dimension Estado Anuncio
+alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio
+add primary key (BI_estado_anuncio_id);
 
 
 print 'Primary Key creadas'
@@ -331,6 +341,11 @@ add constraint FK_BI_Anuncio_BI_Agente
 foreign key (BI_anuncio_agente)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente(BI_agente_id);
 
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add constraint FK_BI_Anuncio_BI_Estado_Anuncio
+foreign key (BI_anuncio_estado)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio(BI_estado_anuncio_id);
+
 
 -- CREACION PROCEDURE MIGRACION
 
@@ -340,8 +355,8 @@ go
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_BI_Dim_Tipo_Moneda
 AS
 BEGIN
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda(BI_tipo_moneda_nombre)
-	SELECT DISTINCT moneda_nombre
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda(BI_tipo_moneda_id, BI_tipo_moneda_nombre)
+	SELECT DISTINCT moneda_id, moneda_nombre
 	FROM LOS_QUERY_EXPLORERS.moneda
 END
 GO
@@ -349,8 +364,8 @@ GO
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Operacion
 AS
 BEGIN
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion(BI_tipo_operacion_nombre)
-	SELECT DISTINCT tipo_operacion_nombre
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion(BI_tipo_operacion_id, BI_tipo_operacion_nombre)
+	SELECT DISTINCT tipo_operacion_id, tipo_operacion_nombre
 	FROM LOS_QUERY_EXPLORERS.tipo_operacion
 END
 GO
@@ -378,9 +393,9 @@ GO
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Sucursal
 AS
 BEGIN
-    INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal(BI_sucursal_nombre, BI_sucursal_ubicacion)
+    INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal(BI_sucursal_id, BI_sucursal_nombre, BI_sucursal_ubicacion)
 
-    SELECT sucursal_nombre, bi_ubicacion_id
+    SELECT distinct sucursal_id, sucursal_nombre, bi_ubicacion_id
     FROM LOS_QUERY_EXPLORERS.sucursal
     JOIN LOS_QUERY_EXPLORERS.provincia on sucursal_provincia = provincia_id
 	JOIN LOS_QUERY_EXPLORERS.localidad on sucursal_localidad = localidad_id
@@ -392,8 +407,8 @@ GO
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Ambientes
 AS
 BEGIN
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes(BI_ambientes_numero)
-	SELECT ambientes_numero
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes(BI_ambientes_id, BI_ambientes_numero)
+	SELECT ambientes_id, ambientes_numero
 	FROM LOS_QUERY_EXPLORERS.ambientes
 END
 GO
@@ -401,8 +416,8 @@ GO
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Tipo_Inmueble
 AS
 BEGIN
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble(BI_tipo_inmueble_nombre)
-	SELECT tipo_inmueble_nombre
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble(BI_tipo_inmueble_id, BI_tipo_inmueble_nombre)
+	SELECT tipo_inmueble_id, tipo_inmueble_nombre
 	FROM LOS_QUERY_EXPLORERS.tipo_inmueble
 END
 GO
@@ -445,17 +460,6 @@ BEGIN
 
     UNION
 
-    select distinct YEAR(anuncio_fecha_finalizacion),
-    (CASE 
-    WHEN month(anuncio_fecha_finalizacion) >= 1 AND month(anuncio_fecha_finalizacion) <= 4 THEN 1
-    WHEN month(anuncio_fecha_finalizacion) >= 5 AND month(anuncio_fecha_finalizacion) <= 8 THEN 2
-    WHEN month(anuncio_fecha_finalizacion) >= 9 AND month(anuncio_fecha_finalizacion) <= 12 THEN 3 
-    END),
-    MONTH(anuncio_fecha_finalizacion)
-    from LOS_QUERY_EXPLORERS.anuncio
-
-    UNION
-
     select distinct YEAR(alquiler_fecha_inicio),
     (CASE 
     WHEN month(alquiler_fecha_inicio) >= 1 AND month(alquiler_fecha_inicio) <= 4 THEN 1
@@ -463,17 +467,6 @@ BEGIN
     WHEN month(alquiler_fecha_inicio) >= 9 AND month(alquiler_fecha_inicio) <= 12 THEN 3 
     END),
     MONTH(alquiler_fecha_inicio)
-    from LOS_QUERY_EXPLORERS.alquiler
-
-    UNION
-
-    select distinct YEAR(alquiler_fecha_fin),
-    (CASE 
-    WHEN month(alquiler_fecha_fin) >= 1 AND month(alquiler_fecha_fin) <= 4 THEN 1
-    WHEN month(alquiler_fecha_fin) >= 5 AND month(alquiler_fecha_fin) <= 8 THEN 2
-    WHEN month(alquiler_fecha_fin) >= 9 AND month(alquiler_fecha_fin) <= 12 THEN 3 
-    END),
-    MONTH(alquiler_fecha_fin)
     from LOS_QUERY_EXPLORERS.alquiler
 
     UNION
@@ -487,51 +480,21 @@ BEGIN
     MONTH(periodo_fecha_inicio)
     from LOS_QUERY_EXPLORERS.periodo
 
-    UNION
-
-    select distinct YEAR(periodo_fecha_fin),
-    (CASE 
-    WHEN month(periodo_fecha_fin) >= 1 AND month(periodo_fecha_fin) <= 4 THEN 1
-    WHEN month(periodo_fecha_fin) >= 5 AND month(periodo_fecha_fin) <= 8 THEN 2
-    WHEN month(periodo_fecha_fin) >= 9 AND month(periodo_fecha_fin) <= 12 THEN 3 
-    END),
-    MONTH(periodo_fecha_fin)
-    from LOS_QUERY_EXPLORERS.periodo
-
-    UNION
-
-    select distinct YEAR(pago_periodo_fecha),
-    (CASE 
-    WHEN month(pago_periodo_fecha) >= 1 AND month(pago_periodo_fecha) <= 4 THEN 1
-    WHEN month(pago_periodo_fecha) >= 5 AND month(pago_periodo_fecha) <= 8 THEN 2
-    WHEN month(pago_periodo_fecha) >= 9 AND month(pago_periodo_fecha) <= 12 THEN 3 
-    END),
-    MONTH(pago_periodo_fecha)
-    from LOS_QUERY_EXPLORERS.pago_periodo
-    UNION
-
-    select distinct YEAR(venta_fecha),
-    (CASE 
-    WHEN month(venta_fecha) >= 1 AND month(venta_fecha) <= 4 THEN 1
-    WHEN month(venta_fecha) >= 5 AND month(venta_fecha) <= 8 THEN 2
-    WHEN month(venta_fecha) >= 9 AND month(venta_fecha) <= 12 THEN 3 
-    END),
-    MONTH(venta_fecha)
-    from LOS_QUERY_EXPLORERS.venta
-
 END
 GO
+
 
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_inquilino
 AS
 BEGIN
     DECLARE @Now DATETIME = getdate()
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_inquilino(BI_inquilino_rango_etario)
-	SELECT DISTINCT case
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_inquilino(BI_inquilino_id, BI_inquilino_rango_etario)
+	SELECT DISTINCT inquilino_id,
+        case
         when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
         when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 50 then 3
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 50 then 4
     end
     from LOS_QUERY_EXPLORERS.persona join LOS_QUERY_EXPLORERS.inquilino on inquilino_persona = persona_id
 END
@@ -541,12 +504,14 @@ CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Agente
 AS
 BEGIN
     DECLARE @Now DATETIME = getdate()
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente(BI_agente_rango_etario, BI_agente_sucursal)
-	SELECT DISTINCT (case
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente(BI_agente_id, BI_agente_rango_etario, BI_agente_sucursal)
+	SELECT DISTINCT 
+        agente_id,
+        (case
         when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
         when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 50 then 3
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 50 then 4
     end),
     (select BI_sucursal_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal where BI_sucursal_nombre = sucursal_nombre)
     from LOS_QUERY_EXPLORERS.persona join LOS_QUERY_EXPLORERS.agente A on A.agente_persona = persona_id
@@ -558,8 +523,10 @@ GO
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Inmueble
 AS
 BEGIN
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble(BI_inmueble_tipo_inmueble, BI_inmueble_rango_m2, BI_inmueble_ambientes, BI_inmueble_ubicacion, BI_inmueble_descripcion)
-	SELECT DISTINCT (select BI_tipo_inmueble_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble where BI_tipo_inmueble_nombre = tipo_inmueble_nombre),
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble(BI_inmueble_id, BI_inmueble_tipo_inmueble, BI_inmueble_rango_m2, BI_inmueble_ambientes, BI_inmueble_ubicacion, BI_inmueble_descripcion)
+	SELECT DISTINCT 
+    inmueble_id,
+    (select BI_tipo_inmueble_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble where BI_tipo_inmueble_nombre = tipo_inmueble_nombre),
     CASE
         WHEN inmueble_superficie_total < 35 then 1
         WHEN inmueble_superficie_total >= 35 and inmueble_superficie_total < 55 then 2
@@ -583,11 +550,23 @@ GO
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Periodo
 AS
 BEGIN
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo(BI_periodo_fecha_inicio, BI_periodo_fecha_fin, BI_periodo_importe, BI_periodo_pago_alquler_fecha)
-	SELECT DISTINCT periodo_fecha_inicio, periodo_fecha_fin, pago_periodo_importe, pago_periodo_fecha
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo(BI_periodo_id, BI_periodo_fecha_inicio, BI_periodo_fecha_fin, BI_periodo_importe, BI_periodo_pago_alquler_fecha)
+	SELECT DISTINCT periodo_id, periodo_fecha_inicio, periodo_fecha_fin, pago_periodo_importe, pago_periodo_fecha
     from LOS_QUERY_EXPLORERS.periodo join LOS_QUERY_EXPLORERS.pago_periodo on periodo_id = pago_periodo_periodo
 END
 GO
+
+-- Dimension Estado Anuncio
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Estado_Anuncio
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio (BI_estado_anuncio_id, BI_estado_anuncio_nombre)
+	SELECT DISTINCT estado_anuncio_id, estado_anuncio_nombre
+    from LOS_QUERY_EXPLORERS.estado_anuncio
+END
+GO
+
 
 -- Tabla de hechos Alquiler
 
@@ -597,94 +576,102 @@ BEGIN
     DECLARE @Now DATETIME = GETDATE()
 	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Alquiler
 	SELECT DISTINCT 
-    (select BI_inquilino_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino where BI_inquilino_rango_etario = 
-    (case
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
-    end)),
-    (select BI_inmueble_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble where BI_inmueble_descripcion = inmueble_descripcion),
+    inquilino_id,
+    inmueble_id,
     (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where 
     BI_tiempo_anio = year(alquiler_fecha_inicio) and BI_tiempo_mes = month(alquiler_fecha_inicio) and BI_tiempo_cuatrimestre = (CASE 
     WHEN month(alquiler_fecha_inicio) >= 1 AND month(alquiler_fecha_inicio) <= 4 THEN 1
     WHEN month(alquiler_fecha_inicio) >= 5 AND month(alquiler_fecha_inicio) <= 8 THEN 2
     WHEN month(alquiler_fecha_inicio) >= 9 AND month(alquiler_fecha_inicio) <= 12 THEN 3 
     END)),
-    (select BI_periodo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo where BI_periodo_fecha_inicio = periodo_fecha_inicio
-    and BI_periodo_fecha_fin = periodo_fecha_fin and 
-    BI_periodo_importe = (select pago_periodo_importe from LOS_QUERY_EXPLORERS.pago_periodo where periodo_id = pago_periodo_periodo)
-    and BI_periodo_pago_alquler_fecha = (select pago_periodo_fecha from LOS_QUERY_EXPLORERS.pago_periodo where periodo_id = pago_periodo_periodo)),
+    periodo_id,
     alquiler_estado,
     alquiler_comision_inmobiliaria
     from LOS_QUERY_EXPLORERS.alquiler join LOS_QUERY_EXPLORERS.inquilino on alquiler_inquilino = inquilino_id
-    join LOS_QUERY_EXPLORERS.persona on persona_id = inquilino_persona
     join LOS_QUERY_EXPLORERS.periodo on periodo_alquiler = alquiler_id
     join LOS_QUERY_EXPLORERS.anuncio on anuncio_id = alquiler_anuncio
     join LOS_QUERY_EXPLORERS.inmueble on inmueble_id = anuncio_inmueble
-    group by alquiler_estado,
-    alquiler_comision_inmobiliaria,
-    (case
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
-    end), 
+    group by inquilino_id,inmueble_id, 
     year(alquiler_fecha_inicio), month(alquiler_fecha_inicio), (CASE 
     WHEN month(alquiler_fecha_inicio) >= 1 AND month(alquiler_fecha_inicio) <= 4 THEN 1
     WHEN month(alquiler_fecha_inicio) >= 5 AND month(alquiler_fecha_inicio) <= 8 THEN 2
     WHEN month(alquiler_fecha_inicio) >= 9 AND month(alquiler_fecha_inicio) <= 12 THEN 3 
     END),
-    periodo_id, periodo_fecha_inicio, periodo_fecha_fin, inmueble_descripcion
+    periodo_id, alquiler_estado, alquiler_comision_inmobiliaria
 END
 GO
 
--- Tabla de hecho Anuncio
-ALTER PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Anuncio
+-- Tabla de Hechos Venta
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Venta
 AS
 BEGIN
-    DECLARE @Now DATETIME = getdate()
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Anuncio(BI_anuncio_fecha_publicacion, BI_anuncio_tipo_operacion, BI_anuncio_inmueble, BI_anuncio_tiempo, BI_anuncio_fecha_finalizacion, BI_anuncio_tipo_moneda, BI_anuncio_agente, BI_anuncio_costo_publicacion)
-	SELECT DISTINCT anuncio_fecha_publicacion,
-    (select BI_tipo_operacion_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion where BI_tipo_operacion_nombre = tipo_operacion_nombre),
-    (select BI_inmueble_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble where BI_inmueble_descripcion = inmueble_descripcion),
-    (select BI_tiempo_id from BI_Dim_Tiempo where
-    year(anuncio_fecha_publicacion) = BI_tiempo_anio and month(anuncio_fecha_publicacion) = BI_tiempo_mes
-    AND
-    (CASE 
-    WHEN month(anuncio_fecha_finalizacion) >= 1 AND month(anuncio_fecha_finalizacion) <= 4 THEN 1
-    WHEN month(anuncio_fecha_finalizacion) >= 5 AND month(anuncio_fecha_finalizacion) <= 8 THEN 2
-    WHEN month(anuncio_fecha_finalizacion) >= 9 AND month(anuncio_fecha_finalizacion) <= 12 THEN 3 
-    END) = BI_tiempo_cuatrimestre),
+    INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Venta
+    SELECT DISTINCT
+        (SELECT BI_inmueble_ubicacion from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble WHERE inmueble_descripcion = BI_inmueble_descripcion) AS ubicacion,
+        venta_moneda_precio AS tipo_moneda,
+        inmueble_id AS inmueble,
+        venta_comision_inmobiliaria,
+        venta_fecha,
+        venta_precio
+    FROM LOS_QUERY_EXPLORERS.venta
+    JOIN LOS_QUERY_EXPLORERS.anuncio ON anuncio_id = venta_anuncio
+    JOIN LOS_QUERY_EXPLORERS.inmueble ON anuncio_inmueble = inmueble_id
+END
+GO
+-- Tabla de Hechos Anuncio
+
+-- Tabla de hecho Anuncio
+
+alter PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
+AS
+BEGIN
+    declare @Now datetime = GETDATE()  
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+    SELECT DISTINCT
+    tipo_operacion_id,
+    inmueble_id,
+    (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where BI_tiempo_anio = year(anuncio_fecha_publicacion)
+    and BI_tiempo_mes = month(anuncio_fecha_publicacion)
+    and BI_tiempo_cuatrimestre = (CASE
+    WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
+    END)) AS TIEMPO,
+    moneda_id,
+    agente_id,
+    anuncio_costo_publicacion,
+    DATEDIFF(DAY, "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion") as date_diff,
+    estado_anuncio_nombre
+from LOS_QUERY_EXPLORERS.anuncio join LOS_QUERY_EXPLORERS.tipo_operacion on anuncio_tipo_operacion = tipo_operacion_id
+join LOS_QUERY_EXPLORERS.inmueble on anuncio_inmueble = inmueble_id
+join LOS_QUERY_EXPLORERS.moneda on anuncio_moneda = moneda_id
+join LOS_QUERY_EXPLORERS.agente on agente_id = anuncio_agente
+join LOS_QUERY_EXPLORERS.estado_anuncio on estado_anuncio_id = anuncio_estado
+group by
+    tipo_operacion_id,
+    inmueble_id,
+    anuncio_estado,
+    anuncio_fecha_publicacion,
     anuncio_fecha_finalizacion,
-    (select BI_tipo_moneda_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda where BI_tipo_moneda_nombre = moneda_nombre),
-    (select BI_agente_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente where BI_agente_rango_etario = (case
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
-    end)),
-    anuncio_costo_publicacion
-    from LOS_QUERY_EXPLORERS.anuncio join LOS_QUERY_EXPLORERS.tipo_operacion on tipo_operacion_id = anuncio_tipo_operacion
-    join LOS_QUERY_EXPLORERS.inmueble on inmueble_id = anuncio_inmueble 
-    join LOS_QUERY_EXPLORERS.moneda on moneda_id = anuncio_moneda
-    join LOS_QUERY_EXPLORERS.agente on agente_id = anuncio_agente
-    join LOS_QUERY_EXPLORERS.persona on persona_id = agente_persona
-    where tipo_operacion_id is not null and inmueble_id is not null and moneda_id is not null and agente_id is not null and persona_id is not null
-    group by anuncio_fecha_publicacion, year(anuncio_fecha_publicacion), month(anuncio_fecha_finalizacion), (CASE 
-    WHEN month(anuncio_fecha_finalizacion) >= 1 AND month(anuncio_fecha_finalizacion) <= 4 THEN 1
-    WHEN month(anuncio_fecha_finalizacion) >= 5 AND month(anuncio_fecha_finalizacion) <= 8 THEN 2
-    WHEN month(anuncio_fecha_finalizacion) >= 9 AND month(anuncio_fecha_finalizacion) <= 12 THEN 3 
-    END), anuncio_fecha_finalizacion, year(anuncio_fecha_publicacion), month(anuncio_fecha_finalizacion), (case
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then 1
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then 2
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 55 then 3
-        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 55 then 4
-    end), anuncio_costo_publicacion, tipo_operacion_nombre, inmueble_descripcion, moneda_nombre, anuncio_agente, agente_persona
+    moneda_id,
+    agente_id,
+    anuncio_costo_publicacion,
+    DATEDIFF(DAY, "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion"),
+    estado_anuncio_nombre
 END
 GO
 
-exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Anuncio
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
+
+/*
+Msg 2627, Level 14, State 1, Procedure LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio, Line 5
+Violation of PRIMARY KEY constraint 'PK__BI_Anunc__C94CDDE54704F1B0'. Cannot insert duplicate key in object 'LOS_QUERY_EXPLORERS_BI.BI_Anuncio'. 
+The duplicate key value is (1, 142639, 58, 2, 2).
+*/
+
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
+
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
 
 print 'Procedimientos de migracion creados'
 go
@@ -708,6 +695,14 @@ exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Agente
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Inmueble
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Periodo
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Alquiler
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Venta
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Estado_Anuncio
+
+
+select * from LOS_QUERY_EXPLORERS.periodo
+select * from LOS_QUERY_EXPLORERS.pago_periodo
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
+
 
 print 'Modelo BI Creado'
 go
@@ -730,3 +725,75 @@ select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
 select * from LOS_QUERY_EXPLORERS_BI.BI_Alquiler
 
+
+
+    declare @Now datetime = GETDATE()  
+	SELECT DISTINCT 
+    tipo_operacion_id,
+    inmueble_id,
+    (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where BI_tiempo_anio = year(anuncio_fecha_publicacion)
+    and BI_tiempo_mes = month(anuncio_fecha_publicacion)
+    and BI_tiempo_cuatrimestre = (CASE 
+    WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3 
+    END)),
+    moneda_id,
+    agente_id,
+    anuncio_costo_publicacion,
+    DATEDIFF("d", "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion"),
+    estado_anuncio_nombre
+    from LOS_QUERY_EXPLORERS.anuncio join LOS_QUERY_EXPLORERS.tipo_operacion on anuncio_tipo_operacion = tipo_operacion_id
+    join LOS_QUERY_EXPLORERS.inmueble on anuncio_inmueble = inmueble_id
+    join LOS_QUERY_EXPLORERS.moneda on anuncio_moneda = moneda_id
+    join LOS_QUERY_EXPLORERS.agente on agente_id = anuncio_agente
+    join LOS_QUERY_EXPLORERS.estado_anuncio on anuncio_estado = estado_anuncio_id
+    group by tipo_operacion_id, inmueble_id, year(anuncio_fecha_publicacion), month(anuncio_fecha_publicacion), 
+    (CASE 
+    WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3 
+    END), 
+    moneda_id, agente_id, anuncio_costo_publicacion, DATEDIFF("d", "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion"),
+    estado_anuncio_nombre
+    having count(*) > 1
+
+declare @Now datetime = GETDATE()
+SELECT DISTINCT
+    tipo_operacion_id,
+    inmueble_id,
+    (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where BI_tiempo_anio = year(anuncio_fecha_publicacion)
+    and BI_tiempo_mes = month(anuncio_fecha_publicacion)
+    and BI_tiempo_cuatrimestre = (CASE
+    WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
+    END)) AS TIEMPO,
+    moneda_id,
+    agente_id,
+    anuncio_costo_publicacion,
+    DATEDIFF(DAY, "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion") as date_diff,
+    estado_anuncio_nombre
+from LOS_QUERY_EXPLORERS.anuncio join LOS_QUERY_EXPLORERS.tipo_operacion on anuncio_tipo_operacion = tipo_operacion_id
+join LOS_QUERY_EXPLORERS.inmueble on anuncio_inmueble = inmueble_id
+join LOS_QUERY_EXPLORERS.moneda on anuncio_moneda = moneda_id
+join LOS_QUERY_EXPLORERS.agente on agente_id = anuncio_agente
+join LOS_QUERY_EXPLORERS.estado_anuncio on anuncio_estado = estado_anuncio_id
+group by
+    tipo_operacion_id,
+    inmueble_id,
+    estado_anuncio_nombre,
+    anuncio_fecha_publicacion,
+    anuncio_fecha_finalizacion,
+    moneda_id,
+    agente_id,
+    anuncio_costo_publicacion,
+    DATEDIFF(DAY, "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion")
+    HAVING tipo_operacion_id = 1 and inmueble_id = 142639 and 
+    (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where BI_tiempo_anio = year(anuncio_fecha_publicacion)
+    and BI_tiempo_mes = month(anuncio_fecha_publicacion)
+    and BI_tiempo_cuatrimestre = (CASE
+    WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
+    END)) = 22 and moneda_id = 2 and agente_id = 3
