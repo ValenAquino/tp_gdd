@@ -130,16 +130,23 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Venta
     BI_venta_precio numeric(18,2)
 )
 
+create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio
+(
+    BI_fecha_anuncio_id int identity(1,1) not null,
+    BI_fecha_anuncio_inicio datetime,
+    BI_fecha_anuncio_fin datetime
+)
+
 create table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 (
     BI_anuncio_tipo_operacion int not null,
     BI_anuncio_inmueble int not null,
-    BI_anuncio_tiempo int not null,
+    BI_anuncio_tiempo_inicio int not null,
     BI_anuncio_tipo_moneda int not null,
     BI_anuncio_agente int not null,
     BI_anuncio_estado int not null,
+    BI_anuncio_fecha_anuncio int not null,
     BI_anuncio_costo_publicacion numeric(18,2),
-    BI_anuncio_duracion int,
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio
@@ -214,9 +221,13 @@ add primary key (BI_alquiler_inquilino, BI_alquiler_inmueble, BI_alquiler_tiempo
 alter table LOS_QUERY_EXPLORERS_BI.BI_Venta
 add primary key (BI_venta_ubicacion, BI_venta_tipo_moneda, BI_venta_inmueble);
 
+-- Dimension Fecha Anuncio
+alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio
+add primary key (BI_fecha_anuncio_id);
+
 -- Dimension Anuncio
 alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
-add primary key (BI_anuncio_tipo_operacion, BI_anuncio_inmueble, BI_anuncio_tiempo, BI_anuncio_tipo_moneda, BI_anuncio_agente, BI_anuncio_estado);
+add primary key (BI_anuncio_tipo_operacion, BI_anuncio_inmueble, BI_anuncio_tiempo_inicio, BI_anuncio_tipo_moneda, BI_anuncio_agente, BI_anuncio_estado, BI_anuncio_fecha_anuncio);
 
 -- Dimension Estado Anuncio
 alter table LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio
@@ -328,7 +339,7 @@ references LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble (BI_inmueble_id);
 
 alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 add constraint FK_BI_Anuncio_BI_Tiempo
-foreign key (BI_anuncio_tiempo)
+foreign key (BI_anuncio_tiempo_inicio)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo (BI_tiempo_id);
 
 alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
@@ -345,6 +356,11 @@ alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 add constraint FK_BI_Anuncio_BI_Estado_Anuncio
 foreign key (BI_anuncio_estado)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio(BI_estado_anuncio_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add constraint FK_BI_Anuncio_BI_Fecha_Anuncio
+foreign key (BI_anuncio_fecha_anuncio)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio(BI_fecha_anuncio_id);
 
 
 -- CREACION PROCEDURE MIGRACION
@@ -567,6 +583,17 @@ BEGIN
 END
 GO
 
+-- Dimension Fecha Anuncio
+
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Fecha_Anuncio
+AS
+BEGIN
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio (BI_fecha_anuncio_inicio, BI_fecha_anuncio_fin)
+	SELECT DISTINCT anuncio_fecha_publicacion, anuncio_fecha_finalizacion
+    from LOS_QUERY_EXPLORERS.anuncio
+END
+GO
+
 
 -- Tabla de hechos Alquiler
 
@@ -618,11 +645,10 @@ BEGIN
     JOIN LOS_QUERY_EXPLORERS.inmueble ON anuncio_inmueble = inmueble_id
 END
 GO
--- Tabla de Hechos Anuncio
 
 -- Tabla de hecho Anuncio
 
-alter PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
+create PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
 AS
 BEGIN
     declare @Now datetime = GETDATE()  
@@ -639,9 +665,10 @@ BEGIN
     END)) AS TIEMPO,
     moneda_id,
     agente_id,
-    anuncio_costo_publicacion,
-    DATEDIFF(DAY, "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion") as date_diff,
-    estado_anuncio_nombre
+    estado_anuncio_id,
+    (select BI_fecha_anuncio_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio where BI_fecha_anuncio_inicio = anuncio_fecha_publicacion
+    and BI_fecha_anuncio_fin = anuncio_fecha_finalizacion),
+    anuncio_costo_publicacion
 from LOS_QUERY_EXPLORERS.anuncio join LOS_QUERY_EXPLORERS.tipo_operacion on anuncio_tipo_operacion = tipo_operacion_id
 join LOS_QUERY_EXPLORERS.inmueble on anuncio_inmueble = inmueble_id
 join LOS_QUERY_EXPLORERS.moneda on anuncio_moneda = moneda_id
@@ -650,18 +677,15 @@ join LOS_QUERY_EXPLORERS.estado_anuncio on estado_anuncio_id = anuncio_estado
 group by
     tipo_operacion_id,
     inmueble_id,
-    anuncio_estado,
     anuncio_fecha_publicacion,
     anuncio_fecha_finalizacion,
     moneda_id,
     agente_id,
-    anuncio_costo_publicacion,
-    DATEDIFF(DAY, "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion"),
-    estado_anuncio_nombre
+    estado_anuncio_id,
+    anuncio_costo_publicacion
 END
 GO
 
-exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
 
 /*
 Msg 2627, Level 14, State 1, Procedure LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio, Line 5
@@ -697,6 +721,9 @@ exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Periodo
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Alquiler
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Venta
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Estado_Anuncio
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Fecha_Anuncio
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
+
 
 
 select * from LOS_QUERY_EXPLORERS.periodo
@@ -724,7 +751,8 @@ select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble
 select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
 select * from LOS_QUERY_EXPLORERS_BI.BI_Alquiler
-
+select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio
+select * from LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 
 
     declare @Now datetime = GETDATE()  
@@ -771,9 +799,9 @@ SELECT DISTINCT
     END)) AS TIEMPO,
     moneda_id,
     agente_id,
+    estado_anuncio_id,
     anuncio_costo_publicacion,
-    DATEDIFF(DAY, "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion") as date_diff,
-    estado_anuncio_nombre
+    DATEDIFF(DAY, "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion") as date_diff
 from LOS_QUERY_EXPLORERS.anuncio join LOS_QUERY_EXPLORERS.tipo_operacion on anuncio_tipo_operacion = tipo_operacion_id
 join LOS_QUERY_EXPLORERS.inmueble on anuncio_inmueble = inmueble_id
 join LOS_QUERY_EXPLORERS.moneda on anuncio_moneda = moneda_id
@@ -782,18 +810,18 @@ join LOS_QUERY_EXPLORERS.estado_anuncio on anuncio_estado = estado_anuncio_id
 group by
     tipo_operacion_id,
     inmueble_id,
-    estado_anuncio_nombre,
+    estado_anuncio_id,
     anuncio_fecha_publicacion,
     anuncio_fecha_finalizacion,
     moneda_id,
     agente_id,
-    anuncio_costo_publicacion,
-    DATEDIFF(DAY, "anuncio_fecha_publicacion", "anuncio_fecha_finalizacion")
-    HAVING tipo_operacion_id = 1 and inmueble_id = 142639 and 
+    anuncio_costo_publicacion
+    HAVING tipo_operacion_id = 1 and inmueble_id = 143936 and 
     (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where BI_tiempo_anio = year(anuncio_fecha_publicacion)
     and BI_tiempo_mes = month(anuncio_fecha_publicacion)
     and BI_tiempo_cuatrimestre = (CASE
     WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
     WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
     WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
-    END)) = 22 and moneda_id = 2 and agente_id = 3
+    END)) = 12 and moneda_id = 2 and agente_id = 1 and estado_anuncio_id = 2
+*/
