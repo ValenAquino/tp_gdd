@@ -113,7 +113,6 @@ IF EXISTS(SELECT [name] FROM sys.procedures WHERE [name] = 'BI_Migrar_Anuncio')
 DROP PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
 
 -- DROP VISTAS
-
 IF EXISTS(SELECT [name] FROM sys.views WHERE [name] = 'Vista_1')
 DROP VIEW  LOS_QUERY_EXPLORERS_BI.Vista_1
 
@@ -150,7 +149,6 @@ create schema LOS_QUERY_EXPLORERS_BI;
 go
 
 -- CREACION DE TABLAS
-
 print 'Creacion de tablas'
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
@@ -242,7 +240,7 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
     BI_periodo_fecha_inicio datetime,
     BI_periodo_fecha_fin datetime,
     BI_periodo_importe numeric(18,0),
-    BI_periodo_pago_alquler_fecha datetime
+    BI_periodo_pago_alquiler_fecha datetime
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
@@ -374,7 +372,6 @@ print 'Primary Key creadas'
 go
 
 -- CREACION DE FK
-
 print 'Creacion de las Foreign Key'
 go
 
@@ -423,7 +420,6 @@ foreign key (BI_inquilino_rango_etario)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario (BI_rango_etario_id);
 
 -- Alquiler
-
 alter table LOS_QUERY_EXPLORERS_BI.BI_Alquiler
 add constraint FK_BI_Alquiler_BI_Inmueble
 foreign key (BI_alquiler_inmueble)
@@ -445,7 +441,6 @@ foreign key (BI_alquiler_periodo)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo (BI_periodo_id);
 
 -- Venta
-
 alter table LOS_QUERY_EXPLORERS_BI.BI_Venta
 add constraint FK_BI_Venta_BI_Ubicacion
 foreign key (BI_venta_ubicacion)
@@ -467,7 +462,6 @@ foreign key (BI_venta_tiempo)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo (BI_tiempo_id);
 
 -- Anuncio
-
 alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 add constraint FK_BI_Anuncio_BI_Tipo_Operacion
 foreign key (BI_anuncio_tipo_operacion)
@@ -505,7 +499,6 @@ references LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio(BI_fecha_anuncio_id);
 
 
 -- CREACION PROCEDURE MIGRACION
-
 print 'Creacion Procedimientos de migracion'
 go
 
@@ -676,7 +669,6 @@ BEGIN
 END
 GO
 
--- Dimension Inmueble
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Inmueble
 AS
 BEGIN
@@ -703,18 +695,14 @@ BEGIN
 END
 GO
 
--- Dimension Periodo
-
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Periodo
 AS
 BEGIN
-	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo(BI_periodo_id, BI_periodo_fecha_inicio, BI_periodo_fecha_fin, BI_periodo_importe, BI_periodo_pago_alquler_fecha)
+	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo(BI_periodo_id, BI_periodo_fecha_inicio, BI_periodo_fecha_fin, BI_periodo_importe, BI_periodo_pago_alquiler_fecha)
 	SELECT DISTINCT periodo_id, periodo_fecha_inicio, periodo_fecha_fin, pago_periodo_importe, pago_periodo_fecha
     from LOS_QUERY_EXPLORERS.periodo join LOS_QUERY_EXPLORERS.pago_periodo on periodo_id = pago_periodo_periodo
 END
 GO
-
--- Dimension Estado Anuncio
 
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Estado_Anuncio
 AS
@@ -725,8 +713,6 @@ BEGIN
 END
 GO
 
--- Dimension Fecha Anuncio
-
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Fecha_Anuncio
 AS
 BEGIN
@@ -735,9 +721,6 @@ BEGIN
     from LOS_QUERY_EXPLORERS.anuncio
 END
 GO
-
-
--- Tabla de hecho Alquiler
 
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Alquiler
 AS
@@ -771,7 +754,6 @@ BEGIN
 END
 GO
 
--- Tabla de hecho Venta
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Venta
 AS
 BEGIN
@@ -794,9 +776,6 @@ BEGIN
     JOIN LOS_QUERY_EXPLORERS.inmueble ON anuncio_inmueble = inmueble_id
 END
 GO
-
-
--- Tabla de hecho Anuncio
 
 create PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
 AS
@@ -838,7 +817,6 @@ END
 GO
 
 -- EJECUCIONES DE PROCEDURES
-
 print 'Ejecutando migracion'
 go
 
@@ -895,7 +873,6 @@ Se consideran todos los anuncios que se dieron de alta en ese cuatrimestre. El
 precio se debe expresar en el tipo de moneda que corresponda, identificando de
 cuál se trata.
 */
-
 create view LOS_QUERY_EXPLORERS_BI.Vista_2 as
     select
     CONCAT(BI_tipo_moneda_nombre, ' ', avg(BI_anuncio_costo_publicacion)) 'Precio Promedio',
@@ -934,11 +911,10 @@ GO
 mes/año. Se calcula en función de las fechas de pago y fecha de vencimiento del
 mismo. El porcentaje es en función del total de pagos en dicho periodo.
 */
-
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_4 as
     select
-    STR(AVG(CASE WHEN BI_periodo_pago_alquler_fecha > BI_periodo_fecha_fin THEN 1 ELSE 0 END)*100) + '%' AS 'Porcentaje',
+    STR(AVG(CASE WHEN BI_periodo_pago_alquiler_fecha > BI_periodo_fecha_fin THEN 1 ELSE 0 END)*100) + '%' AS 'Porcentaje',
     BI_tiempo_mes, BI_tiempo_anio
     from LOS_QUERY_EXPLORERS_BI.BI_Alquiler
     join LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo on BI_alquiler_periodo = BI_periodo_id
@@ -975,7 +951,6 @@ group by a1.BI_alquiler_inmueble, a1.BI_alquiler_inquilino, a1.BI_alquiler_tiemp
 
 GO
 
-
 /*
 6. Precio promedio de m2 de la venta de inmuebles según el tipo de inmueble y
 la localidad para cada cuatrimestre/año. Se calcula en función de las ventas
@@ -998,7 +973,6 @@ GO
 y sucursal para cada cuatrimestre/año. Se calcula en función de los alquileres y
 ventas concretadas dentro del periodo.
 */
-
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_7 as
     select
@@ -1056,10 +1030,6 @@ GO
 9. Monto total de cierre de contratos por tipo de operación (tanto de alquileres
 como ventas) por cada cuatrimestre y sucursal, diferenciando el tipo de moneda.
 */
-
- -- Deberiamos hacer cantPeriodos * precioPorMes ??? Para tener el MONTO TOTAL DE CIERRE DE CONTRATOS.
-  -- que ahora lo puse como sum(BI_periodo_importe)
-
 create view LOS_QUERY_EXPLORERS_BI.Vista_9 as
     select sum(BI_periodo_importe) 'Monto total', BI_tipo_operacion_nombre, BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_agente_sucursal, BI_tipo_moneda_nombre
     from LOS_QUERY_EXPLORERS_BI.BI_Alquiler
@@ -1085,25 +1055,3 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_9 as
     group by BI_tipo_operacion_nombre, BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_agente_sucursal, BI_tipo_moneda_nombre
 
 GO
-/*
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio
--- Pruebas
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inquilino
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio
-select * from LOS_QUERY_EXPLORERS_BI.BI_Alquiler
-select * from LOS_QUERY_EXPLORERS_BI.BI_Venta
-select * from LOS_QUERY_EXPLORERS_BI.BI_Anuncio
-*/
