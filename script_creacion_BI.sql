@@ -497,6 +497,8 @@ add constraint FK_BI_Anuncio_BI_Fecha_Anuncio
 foreign key (BI_anuncio_fecha_anuncio)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio(BI_fecha_anuncio_id);
 
+print 'Foreign Key creadas'
+go
 
 -- CREACION PROCEDURE MIGRACION
 print 'Creacion Procedimientos de migracion'
@@ -817,7 +819,7 @@ END
 GO
 
 -- EJECUCIONES DE PROCEDURES
-print 'Ejecutando migracion'
+print 'Ejecutando migracion...'
 go
 
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_BI_Dim_Tipo_Moneda
