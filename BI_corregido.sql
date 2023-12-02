@@ -204,12 +204,13 @@ create table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
     BI_anuncio_sucursal int not null,
     BI_anuncio_ubicacion int not null,
     BI_anuncio_tiempo_publicacion int not null,
+    BI_anuncio_tipo_inmueble int not null,
     BI_anuncio_precio_promedio numeric(18,2),
     BI_anuncio_duracion_en_dias int,
     BI_anuncio_comision_promedio numeric(18,2),
     BI_anuncio_cantidad int,
     BI_anuncio_cantidad_operaciones_concretadas int,
-    BI_anuncio_monto_total_operaciones_concretadas numeric(18,2)
+    BI_anuncio_monto_total_operaciones_concretadas numeric(18,2),
 )
 
 create table LOS_QUERY_EXPLORERS_BI.BI_Pago_Alquiler
@@ -272,7 +273,7 @@ add primary key (BI_venta_ubicacion, BI_venta_tipo_moneda, BI_venta_tipo_inmuebl
 
 -- Tabla de hechos Anuncio
 alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
-add primary key (BI_anuncio_tipo_operacion, BI_anuncio_tipo_moneda, BI_anuncio_ambientes, BI_anuncio_rango_m2, BI_anuncio_rango_etario_agente, BI_anuncio_sucursal, BI_anuncio_ubicacion, BI_anuncio_tiempo_publicacion);
+add primary key (BI_anuncio_tipo_operacion, BI_anuncio_tipo_moneda, BI_anuncio_ambientes, BI_anuncio_rango_m2, BI_anuncio_rango_etario_agente, BI_anuncio_sucursal, BI_anuncio_ubicacion, BI_anuncio_tiempo_publicacion, BI_anuncio_tipo_inmueble);
 
 -- Tabla de hechos Pago Alquiler
 
@@ -366,6 +367,11 @@ alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 add constraint FK_BI_Anuncio_BI_Ubicacion
 foreign key (BI_anuncio_ubicacion)
 references LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_id);
+
+alter table LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+add constraint FK_BI_Anuncio_BI_Tipo_Inmueble
+foreign key (BI_anuncio_tipo_inmueble)
+references LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble (BI_tipo_inmueble_id);
 
 print 'Foreign Key creadas'
 go
@@ -591,7 +597,13 @@ BEGIN
 
 END
 GO
+/*
+CREATE INDEX idx_pago_periodo_fecha ON LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo (BI_tiempo_anio, BI_tiempo_mes, BI_tiempo_cuatrimestre);
+CREATE INDEX idx_periodo_id ON LOS_QUERY_EXPLORERS.periodo (periodo_id);
+CREATE INDEX idx_periodo_alquiler ON LOS_QUERY_EXPLORERS.periodo (periodo_alquiler);
+CREATE INDEX idx_pago_periodo_fecha ON LOS_QUERY_EXPLORERS.pago_periodo (pago_periodo_fecha);
 
+go
 CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Pago_Alquiler
 AS
 BEGIN
@@ -639,7 +651,8 @@ INSERT INTO LOS_BORBOTONES.BI_TH_PagoAlquiler
 	LOS_BORBOTONES.Cuatrimestre(pagoactual.pagoAlquiler_fechaPago),
 	MONTH(pagoactual.pagoAlquiler_fechaPago)
 go
-create PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
+*/
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
 AS
 BEGIN
     declare @Now datetime = GETDATE()  
@@ -680,7 +693,8 @@ BEGIN
     sum(CASE WHEN anuncio_estado = 3 THEN 1
         ELSE 0 END),
     sum(CASE WHEN anuncio_estado = 3 THEN venta_precio
-        ELSE 0 END)
+        ELSE 0 END),
+    inmueble_tipo_inmueble
     from LOS_QUERY_EXPLORERS.anuncio
     join LOS_QUERY_EXPLORERS.inmueble on inmueble_id = anuncio_inmueble
     join LOS_QUERY_EXPLORERS.agente on anuncio_agente = agente_id
@@ -713,7 +727,7 @@ BEGIN
     WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
     WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
     WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
-    END
+    END, inmueble_tipo_inmueble
 
     UNION
 
@@ -753,7 +767,8 @@ BEGIN
     sum(CASE WHEN anuncio_estado = 1 THEN 1
         ELSE 0 END),
     sum(CASE WHEN anuncio_estado = 1 THEN pago_periodo_importe
-        ELSE 0 END)
+        ELSE 0 END),
+    inmueble_tipo_inmueble
     from LOS_QUERY_EXPLORERS.anuncio
     join LOS_QUERY_EXPLORERS.inmueble on inmueble_id = anuncio_inmueble
     join LOS_QUERY_EXPLORERS.agente on anuncio_agente = agente_id
@@ -788,7 +803,7 @@ BEGIN
     WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
     WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
     WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
-    END
+    END, inmueble_tipo_inmueble
 END
 GO
 
@@ -808,10 +823,11 @@ exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_BI_Dim_Tiempo
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Alquiler
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Venta
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Pago_Alquiler
 
 print 'Migracion finalizada'
 go
-
+/*
 -- CREACION DE VISTAS
 
 /* 
@@ -823,17 +839,20 @@ la fecha de finalización.
 */
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_1 as
-    select BI_tipo_operacion_nombre, BI_ubicacion_barrio, BI_inmueble_ambientes, 
+    select distinct BI_anuncio_duracion_en_dias,
+    BI_ubicacion_barrio, 
+    BI_ambientes_detalle, 
     BI_tiempo_anio,
-    BI_tiempo_cuatrimestre,
-    avg(datediff(day, BI_fecha_anuncio_inicio, BI_fecha_anuncio_fin)) 'Duracion Promedio'
+    BI_tiempo_cuatrimestre
     from LOS_QUERY_EXPLORERS_BI.BI_Anuncio
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio on BI_fecha_anuncio_id = BI_anuncio_fecha_anuncio
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble on BI_anuncio_inmueble = BI_inmueble_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion on BI_inmueble_ubicacion = BI_ubicacion_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_anuncio_tiempo = BI_tiempo_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion on BI_tipo_operacion_id = BI_anuncio_tipo_operacion
-    group by BI_tipo_operacion_nombre, BI_ubicacion_barrio, BI_inmueble_ambientes, BI_tiempo_anio, BI_tiempo_cuatrimestre
+    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion on BI_ubicacion_id = BI_anuncio_ubicacion
+    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes on BI_ambientes_id = BI_anuncio_ambientes
+    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_tiempo_id = BI_anuncio_tiempo_publicacion
+    group by BI_anuncio_duracion_en_dias,
+    BI_ubicacion_barrio, 
+    BI_ambientes_detalle, 
+    BI_tiempo_anio,
+    BI_tiempo_cuatrimestre
 GO
 
 /*
@@ -845,16 +864,17 @@ cuál se trata.
 */
 create view LOS_QUERY_EXPLORERS_BI.Vista_2 as
     select
-    CONCAT(BI_tipo_moneda_nombre, ' ', avg(BI_anuncio_costo_publicacion)) 'Precio Promedio',
-    BI_anuncio_tipo_operacion, BI_inmueble_tipo_inmueble, BI_inmueble_rango_m2,
+    CONCAT(BI_tipo_moneda_detalle, ' ', BI_anuncio_precio_promedio) 'Precio Promedio',
+    BI_anuncio_tipo_operacion, BI_anuncio_tipo_inmueble, BI_anuncio_rango_m2,
     BI_tiempo_anio,
     BI_tiempo_cuatrimestre
     from LOS_QUERY_EXPLORERS_BI.BI_Anuncio
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble on BI_anuncio_inmueble = BI_inmueble_id
     join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda on BI_anuncio_tipo_moneda = BI_tipo_moneda_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_tiempo_id = BI_anuncio_tiempo
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio on BI_anuncio_fecha_anuncio = BI_fecha_anuncio_id
-    group by BI_anuncio_tipo_operacion, BI_inmueble_tipo_inmueble, BI_inmueble_rango_m2, BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_tipo_moneda_nombre
+    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_tiempo_id = BI_anuncio_tiempo_publicacion
+    group by 
+    BI_anuncio_tipo_operacion, BI_anuncio_tipo_inmueble, BI_anuncio_rango_m2,
+    BI_tiempo_anio,
+    BI_tiempo_cuatrimestre
 GO
 
 /*
@@ -1024,4 +1044,4 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_9 as
     join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion on BI_anuncio_tipo_operacion = BI_tipo_operacion_id
     group by BI_tipo_operacion_nombre, BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_agente_sucursal, BI_tipo_moneda_nombre
 
-GO
+GO*/
