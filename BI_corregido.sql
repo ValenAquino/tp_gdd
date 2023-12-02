@@ -559,60 +559,236 @@ AS
 BEGIN
     INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Venta
     SELECT DISTINCT
-        (SELECT BI_inmueble_ubicacion from LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble WHERE inmueble_descripcion = BI_inmueble_descripcion) AS ubicacion,
-        venta_moneda_precio AS tipo_moneda,
-        inmueble_id AS inmueble,
-        (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where 
-        BI_tiempo_anio = year(venta_fecha) and BI_tiempo_mes = month(venta_fecha) and BI_tiempo_cuatrimestre = (CASE 
-        WHEN month(venta_fecha) >= 1 AND month(venta_fecha) <= 4 THEN 1
-        WHEN month(venta_fecha) >= 5 AND month(venta_fecha) <= 8 THEN 2
-        WHEN month(venta_fecha) >= 9 AND month(venta_fecha) <= 12 THEN 3 
-        END)),
-        venta_comision_inmobiliaria,
-        venta_fecha,
-        venta_precio
+    (select BI_ubicacion_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion where BI_ubicacion_barrio = barrio_nombre and
+    BI_ubicacion_localidad = localidad_nombre and BI_ubicacion_provincia = provincia_nombre),
+    venta_moneda_precio,
+    inmueble_tipo_inmueble,
+    (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where BI_tiempo_anio = year(venta_fecha)
+    and BI_tiempo_mes = month(venta_fecha)
+    and BI_tiempo_cuatrimestre = (CASE
+    WHEN month(venta_fecha) >= 1 AND month(venta_fecha) <= 4 THEN 1
+    WHEN month(venta_fecha) >= 5 AND month(venta_fecha) <= 8 THEN 2
+    WHEN month(venta_fecha) >= 9 AND month(venta_fecha) <= 12 THEN 3
+    END)),
+    round(avg(venta_precio/inmueble_superficie_total), 2),
+    count(venta_id)
     FROM LOS_QUERY_EXPLORERS.venta
-    JOIN LOS_QUERY_EXPLORERS.anuncio ON anuncio_id = venta_anuncio
-    JOIN LOS_QUERY_EXPLORERS.inmueble ON anuncio_inmueble = inmueble_id
+    join LOS_QUERY_EXPLORERS.anuncio ON anuncio_id = venta_anuncio
+    join LOS_QUERY_EXPLORERS.inmueble ON anuncio_inmueble = inmueble_id
+    join LOS_QUERY_EXPLORERS.barrio on barrio_id = inmueble_barrio
+    join LOS_QUERY_EXPLORERS.localidad on localidad_id = inmueble_localidad
+    join LOS_QUERY_EXPLORERS.provincia on provincia_id = inmueble_provincia
+    group by barrio_nombre, localidad_nombre, provincia_nombre,
+    venta_moneda_precio,
+    inmueble_tipo_inmueble,
+    year(venta_fecha),
+    month(venta_fecha),
+    (CASE
+    WHEN month(venta_fecha) >= 1 AND month(venta_fecha) <= 4 THEN 1
+    WHEN month(venta_fecha) >= 5 AND month(venta_fecha) <= 8 THEN 2
+    WHEN month(venta_fecha) >= 9 AND month(venta_fecha) <= 12 THEN 3
+    END)
+
 END
 GO
 
+CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Pago_Alquiler
+AS
+BEGIN
+    INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Pago_Alquiler
+    SELECT DISTINCT
+    (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where BI_tiempo_anio = year(pagoActual.pago_periodo_fecha)
+    and BI_tiempo_mes = month(pagoActual.pago_periodo_fecha)
+    and BI_tiempo_cuatrimestre = (CASE
+    WHEN month(pagoActual.pago_periodo_fecha) >= 1 AND month(pagoActual.pago_periodo_fecha) <= 4 THEN 1
+    WHEN month(pagoActual.pago_periodo_fecha) >= 5 AND month(pagoActual.pago_periodo_fecha) <= 8 THEN 2
+    WHEN month(pagoActual.pago_periodo_fecha) >= 9 AND month(pagoActual.pago_periodo_fecha) <= 12 THEN 3
+    END)),
+    count(pagoActual.pago_periodo_id),
+    AVG(CASE WHEN pagoActual.pago_periodo_fecha < periodoActual.periodo_fecha_fin THEN 1 ELSE 0 END) * 100 * 100 'Porcentaje Incumplimiento',
+    SUM((pagoActual.pago_periodo_importe - pagoAnterior.pago_periodo_importe)/pagoAnterior.pago_periodo_importe*100)/ COUNT(*) AS 'Promedio Porcentaje Aumento'
+    from LOS_QUERY_EXPLORERS.pago_periodo pagoActual
+    join LOS_QUERY_EXPLORERS.periodo periodoActual on periodoActual.periodo_id = pagoActual.pago_periodo_periodo
+    join LOS_QUERY_EXPLORERS.periodo periodoAnterior on periodoAnterior.periodo_alquiler = periodoActual.periodo_alquiler
+    join LOS_QUERY_EXPLORERS.pago_periodo pagoAnterior on DATEDIFF(MONTH,pagoAnterior.pago_periodo_fecha,pagoActual.pago_periodo_fecha) = 1
+    group by year(pagoActual.pago_periodo_fecha), month(pagoActual.pago_periodo_fecha), CASE
+    WHEN month(pagoActual.pago_periodo_fecha) >= 1 AND month(pagoActual.pago_periodo_fecha) <= 4 THEN 1
+    WHEN month(pagoActual.pago_periodo_fecha) >= 5 AND month(pagoActual.pago_periodo_fecha) <= 8 THEN 2
+    WHEN month(pagoActual.pago_periodo_fecha) >= 9 AND month(pagoActual.pago_periodo_fecha) <= 12 THEN 3
+    END
+END
+GO
+
+
+INSERT INTO LOS_BORBOTONES.BI_TH_PagoAlquiler
+		(pagoalquiler_anio_pago,
+		pagoalquiler_cuatrimestre_pago,
+		pagoalquiler_mes_pago,
+		pagoalquiler_porcentaje_incumplimiento,
+		pagoalquiler_cant_pagos,
+		pagoalquiler_porcentaje_aumento)	
+	SELECT YEAR(pagoactual.pagoAlquiler_fechaPago) AS 'Año de pago',
+		LOS_BORBOTONES.Cuatrimestre(pagoactual.pagoAlquiler_fechaPago) AS 'Cuatrimestre de pago',
+		MONTH(pagoactual.pagoAlquiler_fechaPago) AS 'Mes de pago',
+		SUM(CASE WHEN (DATEDIFF(DAY, pagoactual.pagoAlquiler_fechaPago, pagoactual.pagoAlquiler_fechaFinPeriodo) < 0) THEN 1 ELSE 0 END) / COUNT(*) * 100 AS 'Porcentaje Incumplimiento',
+		COUNT(*) AS 'Cantidad de pagos',
+		SUM((pagoactual.pagoAlquiler_importe - pagoanterior.pagoAlquiler_importe)/pagoanterior.pagoAlquiler_importe*100)/ COUNT(*) AS 'Promedio Porcentaje Aumento'
+	FROM LOS_BORBOTONES.PagoAlquiler pagoactual
+	JOIN LOS_BORBOTONES.PagoAlquiler pagoanterior ON pagoanterior.pagoAlquiler_alquiler = pagoactual.pagoAlquiler_alquiler AND DATEDIFF(MONTH,pagoanterior.pagoAlquiler_fechaPago,pagoactual.pagoAlquiler_fechaPago) = 1 
+	GROUP BY YEAR(pagoactual.pagoAlquiler_fechaPago),
+	LOS_BORBOTONES.Cuatrimestre(pagoactual.pagoAlquiler_fechaPago),
+	MONTH(pagoactual.pagoAlquiler_fechaPago)
+go
 create PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
 AS
 BEGIN
     declare @Now datetime = GETDATE()  
 	INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Anuncio
     SELECT DISTINCT
-    tipo_operacion_id,
-    inmueble_id,
+    anuncio_tipo_operacion,
+    anuncio_moneda,
+    inmueble_ambientes,
+    (select BI_rango_m2_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2 
+     where BI_rango_m2_detalle = CASE
+        WHEN inmueble_superficie_total < 35 then '< 35'
+        WHEN inmueble_superficie_total >= 35 and inmueble_superficie_total < 55 then '35 - 55'
+        WHEN inmueble_superficie_total >= 55 and inmueble_superficie_total < 75 then '55 - 75'
+        WHEN inmueble_superficie_total >= 75 and inmueble_superficie_total < 100 then '75 - 100'
+        WHEN inmueble_superficie_total >= 100 then '> 100'
+     END),
+    (select BI_rango_etario_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
+    where BI_rango_etario_detalle = case
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then '< 25'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then '25 - 35'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 50 then '35 - 50'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 50 then '> 50'
+    end),
+    agente_sucursal,
+    (select BI_ubicacion_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion where BI_ubicacion_barrio = barrio_nombre and
+    BI_ubicacion_localidad = localidad_nombre and BI_ubicacion_provincia = provincia_nombre),
     (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where BI_tiempo_anio = year(anuncio_fecha_publicacion)
     and BI_tiempo_mes = month(anuncio_fecha_publicacion)
     and BI_tiempo_cuatrimestre = (CASE
     WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
     WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
     WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
-    END)) AS TIEMPO,
-    moneda_id,
-    agente_id,
-    estado_anuncio_id,
-    (select BI_fecha_anuncio_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio where BI_fecha_anuncio_inicio = anuncio_fecha_publicacion
-    and BI_fecha_anuncio_fin = anuncio_fecha_finalizacion),
-    anuncio_costo_publicacion
-from LOS_QUERY_EXPLORERS.anuncio
-join LOS_QUERY_EXPLORERS.tipo_operacion on anuncio_tipo_operacion = tipo_operacion_id
-join LOS_QUERY_EXPLORERS.inmueble on anuncio_inmueble = inmueble_id
-join LOS_QUERY_EXPLORERS.moneda on anuncio_moneda = moneda_id
-join LOS_QUERY_EXPLORERS.agente on agente_id = anuncio_agente
-join LOS_QUERY_EXPLORERS.estado_anuncio on estado_anuncio_id = anuncio_estado
-group by
-    tipo_operacion_id,
-    inmueble_id,
-    anuncio_fecha_publicacion,
-    anuncio_fecha_finalizacion,
-    moneda_id,
-    agente_id,
-    estado_anuncio_id,
-    anuncio_costo_publicacion
+    END)),
+    avg(venta_precio),
+    avg(DATEDIFF(d,anuncio_fecha_publicacion,anuncio_fecha_finalizacion)),
+    avg(venta_comision_inmobiliaria),
+    count(anuncio_id),
+    sum(CASE WHEN anuncio_estado = 3 THEN 1
+        ELSE 0 END),
+    sum(CASE WHEN anuncio_estado = 3 THEN venta_precio
+        ELSE 0 END)
+    from LOS_QUERY_EXPLORERS.anuncio
+    join LOS_QUERY_EXPLORERS.inmueble on inmueble_id = anuncio_inmueble
+    join LOS_QUERY_EXPLORERS.agente on anuncio_agente = agente_id
+    join LOS_QUERY_EXPLORERS.persona on persona_id = agente_persona
+    join LOS_QUERY_EXPLORERS.barrio on barrio_id = inmueble_barrio
+    join LOS_QUERY_EXPLORERS.localidad on localidad_id = inmueble_localidad
+    join LOS_QUERY_EXPLORERS.provincia on provincia_id = inmueble_provincia
+    join LOS_QUERY_EXPLORERS.venta on anuncio_id = venta_anuncio
+    group by 
+    anuncio_tipo_operacion,
+    anuncio_moneda,
+    inmueble_ambientes,
+    CASE
+        WHEN inmueble_superficie_total < 35 then '< 35'
+        WHEN inmueble_superficie_total >= 35 and inmueble_superficie_total < 55 then '35 - 55'
+        WHEN inmueble_superficie_total >= 55 and inmueble_superficie_total < 75 then '55 - 75'
+        WHEN inmueble_superficie_total >= 75 and inmueble_superficie_total < 100 then '75 - 100'
+        WHEN inmueble_superficie_total >= 100 then '> 100'
+     END,
+     case
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then '< 25'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then '25 - 35'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 50 then '35 - 50'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 50 then '> 50'
+    END,
+    agente_sucursal,
+    barrio_nombre, provincia_nombre, localidad_nombre,
+    year(anuncio_fecha_publicacion), month(anuncio_fecha_publicacion), 
+    CASE
+    WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
+    END
+
+    UNION
+
+    SELECT DISTINCT
+    anuncio_tipo_operacion,
+    anuncio_moneda,
+    inmueble_ambientes,
+    (select BI_rango_m2_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2 
+     where BI_rango_m2_detalle = CASE
+        WHEN inmueble_superficie_total < 35 then '< 35'
+        WHEN inmueble_superficie_total >= 35 and inmueble_superficie_total < 55 then '35 - 55'
+        WHEN inmueble_superficie_total >= 55 and inmueble_superficie_total < 75 then '55 - 75'
+        WHEN inmueble_superficie_total >= 75 and inmueble_superficie_total < 100 then '75 - 100'
+        WHEN inmueble_superficie_total >= 100 then '> 100'
+     END),
+    (select BI_rango_etario_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
+    where BI_rango_etario_detalle = case
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then '< 25'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then '25 - 35'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 50 then '35 - 50'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 50 then '> 50'
+    end),
+    agente_sucursal,
+    (select BI_ubicacion_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion where BI_ubicacion_barrio = barrio_nombre and
+    BI_ubicacion_localidad = localidad_nombre and BI_ubicacion_provincia = provincia_nombre),
+    (select BI_tiempo_id from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo where BI_tiempo_anio = year(anuncio_fecha_publicacion)
+    and BI_tiempo_mes = month(anuncio_fecha_publicacion)
+    and BI_tiempo_cuatrimestre = (CASE
+    WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
+    END)),
+    avg(pago_periodo_importe),
+    avg(DATEDIFF(d,anuncio_fecha_publicacion,anuncio_fecha_finalizacion)),
+    avg(alquiler_comision_inmobiliaria),
+    count(anuncio_id),
+    sum(CASE WHEN anuncio_estado = 1 THEN 1
+        ELSE 0 END),
+    sum(CASE WHEN anuncio_estado = 1 THEN pago_periodo_importe
+        ELSE 0 END)
+    from LOS_QUERY_EXPLORERS.anuncio
+    join LOS_QUERY_EXPLORERS.inmueble on inmueble_id = anuncio_inmueble
+    join LOS_QUERY_EXPLORERS.agente on anuncio_agente = agente_id
+    join LOS_QUERY_EXPLORERS.persona on persona_id = agente_persona
+    join LOS_QUERY_EXPLORERS.barrio on barrio_id = inmueble_barrio
+    join LOS_QUERY_EXPLORERS.localidad on localidad_id = inmueble_localidad
+    join LOS_QUERY_EXPLORERS.provincia on provincia_id = inmueble_provincia
+    join LOS_QUERY_EXPLORERS.alquiler on anuncio_id = alquiler_anuncio
+    join LOS_QUERY_EXPLORERS.periodo on periodo_alquiler = alquiler_id
+    join LOS_QUERY_EXPLORERS.pago_periodo on pago_periodo_periodo = periodo_id
+    group by 
+    anuncio_tipo_operacion,
+    anuncio_moneda,
+    inmueble_ambientes,
+    CASE
+        WHEN inmueble_superficie_total < 35 then '< 35'
+        WHEN inmueble_superficie_total >= 35 and inmueble_superficie_total < 55 then '35 - 55'
+        WHEN inmueble_superficie_total >= 55 and inmueble_superficie_total < 75 then '55 - 75'
+        WHEN inmueble_superficie_total >= 75 and inmueble_superficie_total < 100 then '75 - 100'
+        WHEN inmueble_superficie_total >= 100 then '> 100'
+     END,
+     case
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 < 25 then '< 25'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 25 and 35 then '25 - 35'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 between 35 and 50 then '35 - 50'
+        when  (CONVERT(int,CONVERT(char(8),@Now,112))-CONVERT(char(8),persona_fecha_nacimiento,112))/10000 > 50 then '> 50'
+    END,
+    agente_sucursal,
+    barrio_nombre, provincia_nombre, localidad_nombre,
+    year(anuncio_fecha_publicacion), month(anuncio_fecha_publicacion), 
+    CASE
+    WHEN month(anuncio_fecha_publicacion) >= 1 AND month(anuncio_fecha_publicacion) <= 4 THEN 1
+    WHEN month(anuncio_fecha_publicacion) >= 5 AND month(anuncio_fecha_publicacion) <= 8 THEN 2
+    WHEN month(anuncio_fecha_publicacion) >= 9 AND month(anuncio_fecha_publicacion) <= 12 THEN 3
+    END
 END
 GO
 
