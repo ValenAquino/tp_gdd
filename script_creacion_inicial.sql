@@ -221,7 +221,8 @@ create table LOS_QUERY_EXPLORERS.pago_periodo
 	pago_periodo_fecha datetime NULL,
 	pago_periodo_periodo numeric(18,0) NOT NULL,
 	pago_periodo_medio_de_pago numeric(18,0) NOT NULL,
-	pago_periodo_importe numeric(18,0) NOT NULL
+	pago_periodo_importe numeric(18,0) NOT NULL,
+	pago_periodo_fecha_vencimiento datetime
 )
 
 create table LOS_QUERY_EXPLORERS.pago_venta
@@ -905,7 +906,7 @@ go
 create procedure LOS_QUERY_EXPLORERS.migracion_pago_periodo
 as
 begin
-    insert into LOS_QUERY_EXPLORERS.pago_periodo(pago_periodo_id, pago_periodo_fecha, pago_periodo_periodo, pago_periodo_medio_de_pago, pago_periodo_importe)
+    insert into LOS_QUERY_EXPLORERS.pago_periodo(pago_periodo_id, pago_periodo_fecha, pago_periodo_periodo, pago_periodo_medio_de_pago, pago_periodo_importe, pago_periodo_fecha_vencimiento)
     select distinct M.PAGO_ALQUILER_CODIGO,
 					M.PAGO_ALQUILER_FECHA,
 					(select periodo_id from LOS_QUERY_EXPLORERS.periodo where periodo_alquiler = M.ALQUILER_CODIGO and
@@ -914,7 +915,8 @@ begin
 																			  periodo_fecha_fin = M.PAGO_ALQUILER_FEC_FIN and
 																			  periodo_descripcion = M.PAGO_ALQUILER_DESC),
 					(select medio_de_pago_id from LOS_QUERY_EXPLORERS.medio_de_pago where medio_de_pago_nombre = M.PAGO_ALQUILER_MEDIO_PAGO),
-					M.PAGO_ALQUILER_IMPORTE
+					M.PAGO_ALQUILER_IMPORTE,
+					M.PAGO_ALQUILER_FECHA_VENCIMIENTO
     from gd_esquema.Maestra M
     where M.PAGO_ALQUILER_CODIGO is not null
 end
