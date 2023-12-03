@@ -727,20 +727,33 @@ BEGIN
 END
 GO
 
+-- Creacion de indices
+CREATE INDEX idx_pago_periodo_fecha ON LOS_QUERY_EXPLORERS.pago_periodo (pago_periodo_fecha);
+CREATE INDEX idx_anuncio_fecha_publicacion ON LOS_QUERY_EXPLORERS.anuncio (anuncio_fecha_publicacion);
+CREATE INDEX idx_anuncio_estado ON LOS_QUERY_EXPLORERS.anuncio (anuncio_estado);
+CREATE INDEX idx_inmueble_id ON LOS_QUERY_EXPLORERS.inmueble (inmueble_id);
+CREATE INDEX idx_agente_id ON LOS_QUERY_EXPLORERS.agente (agente_id);
+CREATE INDEX idx_localidad_id ON LOS_QUERY_EXPLORERS.localidad (localidad_id);
+CREATE INDEX idx_barrio_id ON LOS_QUERY_EXPLORERS.barrio (barrio_id);
+CREATE INDEX idx_provincia_id ON LOS_QUERY_EXPLORERS.provincia (provincia_id);
+CREATE INDEX idx_alquiler_anuncio ON LOS_QUERY_EXPLORERS.alquiler (alquiler_anuncio);
+CREATE INDEX idx_venta_anuncio ON LOS_QUERY_EXPLORERS.venta (venta_anuncio);
+CREATE INDEX idx_BI_ubicacion_barrio_localidad_provincia ON LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_barrio, BI_ubicacion_localidad, BI_ubicacion_provincia);
+
 -- Select's de prueba
-select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Alquiler
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Venta
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Pago_Alquiler
-SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+-- select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Alquiler
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Venta
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Pago_Alquiler
+-- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 
 -- EJECUCIONES DE PROCEDURES
 print 'Ejecutando migracion...'
@@ -757,8 +770,8 @@ exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_m2
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_BI_Dim_Tiempo
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Alquiler
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Venta
-exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Pago_Alquiler
-exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio -- 19 segs aprox, sigue estando mal
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Pago_Alquiler -- 6 spegs
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio -- 8 segs arox
 
 print 'Migracion finalizada'
 go
@@ -766,7 +779,7 @@ go
 /*
 -- CREACION DE VISTAS
 
-/* 
+/*
 1. Duración promedio (en días) que se encuentran publicados los anuncios
 según el tipo de operación (alquiler, venta, etc), barrio y ambientes para cada
 cuatrimestre de cada año. Se consideran todos los anuncios que se dieron de alta
