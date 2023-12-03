@@ -23,7 +23,7 @@ DROP TABLE  LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda
 IF EXISTS(SELECT [name] FROM sys.tables WHERE [name] = 'BI_Dim_Tipo_Rango_m2')
 DROP TABLE  LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
 
-IF EXISTS(SELECT [name] FROM sys.tables WHERE [name] = 'BI_Dim_Tipo_Sucursal')
+IF EXISTS(SELECT [name] FROM sys.tables WHERE [name] = 'BI_Dim_Sucursal')
 DROP TABLE  LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal
 
 IF EXISTS(SELECT [name] FROM sys.tables WHERE [name] = 'BI_Dim_Ambientes')
@@ -34,6 +34,9 @@ DROP TABLE  LOS_QUERY_EXPLORERS_BI.BI_Alquiler
 
 IF EXISTS(SELECT [name] FROM sys.tables WHERE [name] = 'BI_Venta')
 DROP TABLE  LOS_QUERY_EXPLORERS_BI.BI_Venta
+
+IF EXISTS(SELECT [name] FROM sys.tables WHERE [name] = 'BI_Pago_Alquiler')
+DROP TABLE  LOS_QUERY_EXPLORERS_BI.BI_Pago_Alquiler
 
 IF EXISTS(SELECT [name] FROM sys.tables WHERE [name] = 'BI_Anuncio')
 DROP TABLE  LOS_QUERY_EXPLORERS_BI.BI_Anuncio
@@ -73,8 +76,12 @@ DROP PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Alquiler
 IF EXISTS(SELECT [name] FROM sys.procedures WHERE [name] = 'BI_Migrar_Venta')
 DROP PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Venta
 
+IF EXISTS(SELECT [name] FROM sys.procedures WHERE [name] = 'BI_Migrar_Pago_Alquiler')
+DROP PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Pago_Alquiler
+
 IF EXISTS(SELECT [name] FROM sys.procedures WHERE [name] = 'BI_Migrar_Anuncio')
 DROP PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
+
 
 -- DROP VISTAS
 IF EXISTS(SELECT [name] FROM sys.views WHERE [name] = 'Vista_1')
@@ -680,7 +687,7 @@ BEGIN
 END
 GO
 
-CREATE PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
+create PROCEDURE LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
 AS
 BEGIN
     INSERT INTO LOS_QUERY_EXPLORERS_BI.BI_Anuncio
@@ -697,7 +704,7 @@ BEGIN
         AVG(anuncio_precio_publicado) AS PRECIO_PROMEDIO,
         AVG(DATEDIFF(d, anuncio_fecha_publicacion, anuncio_fecha_finalizacion)) AS duracion_dias,
         CONVERT(NUMERIC(18,2), AVG(COALESCE(venta_comision_inmobiliaria, alquiler_comision_inmobiliaria, 0))) AS comision_promedio,
-        COUNT(DISTINCT anuncio_id) AS cantidad,
+        COUNT(anuncio_id) AS cantidad,
         SUM(IIF(anuncio_estado = 2, 0, 1)) AS CANTIDAD_CONCRETADAS,
         SUM(COALESCE(venta_precio, pago_periodo_importe, 0)) AS MONTO_CONCRETADAS
     FROM LOS_QUERY_EXPLORERS.anuncio
@@ -728,6 +735,7 @@ BEGIN
 END
 GO
 
+
 -- Creacion de indices
 CREATE INDEX idx_pago_periodo_fecha ON LOS_QUERY_EXPLORERS.pago_periodo (pago_periodo_fecha);
 CREATE INDEX idx_anuncio_fecha_publicacion ON LOS_QUERY_EXPLORERS.anuncio (anuncio_fecha_publicacion);
@@ -740,21 +748,6 @@ CREATE INDEX idx_provincia_id ON LOS_QUERY_EXPLORERS.provincia (provincia_id);
 CREATE INDEX idx_alquiler_anuncio ON LOS_QUERY_EXPLORERS.alquiler (alquiler_anuncio);
 CREATE INDEX idx_venta_anuncio ON LOS_QUERY_EXPLORERS.venta (venta_anuncio);
 CREATE INDEX idx_BI_ubicacion_barrio_localidad_provincia ON LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_barrio, BI_ubicacion_localidad, BI_ubicacion_provincia);
-
--- Select's de prueba
--- select * from LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Ambientes
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Inmueble
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_m2
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Alquiler
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Venta
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Pago_Alquiler
--- SELECT * FROM LOS_QUERY_EXPLORERS_BI.BI_Anuncio
 
 -- EJECUCIONES DE PROCEDURES
 print 'Ejecutando migracion...'
@@ -771,8 +764,8 @@ exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Dim_Rango_m2
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_BI_Dim_Tiempo
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Alquiler
 exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Venta
-exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Pago_Alquiler -- 6 spegs
-exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio -- 8 segs arox
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Pago_Alquiler
+exec LOS_QUERY_EXPLORERS_BI.BI_Migrar_Anuncio
 
 print 'Migracion finalizada'
 go
@@ -780,17 +773,15 @@ go
 
 -- CREACION DE VISTAS
 
-/*
-1. Duración promedio (en días) que se encuentran publicados los anuncios
+/*1. Duración promedio (en días) que se encuentran publicados los anuncios
 según el tipo de operación (alquiler, venta, etc), barrio y ambientes para cada
 cuatrimestre de cada año. Se consideran todos los anuncios que se dieron de alta
 en ese cuatrimestre. La duración se calcula teniendo en cuenta la fecha de alta y
-la fecha de finalización.
-*/
+la fecha de finalización.*/
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_1 as
     select  
-    BI_anuncio_duracion_en_dias,
+    sum(BI_anuncio_duracion_en_dias)/count(*) as 'Duracion promedio en dias',
     BI_tipo_operacion_nombre,
     BI_ubicacion_barrio, 
     BI_ambientes_detalle, 
@@ -802,7 +793,6 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_1 as
     join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_tiempo_id = BI_anuncio_tiempo_publicacion
     join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion on BI_tipo_operacion_id = BI_anuncio_tipo_operacion
     group by 
-    BI_anuncio_duracion_en_dias,
     BI_tipo_operacion_nombre,
     BI_ubicacion_barrio, 
     BI_ambientes_detalle, 
@@ -810,16 +800,15 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_1 as
     BI_tiempo_cuatrimestre
 GO
 
-/*
-2. Precio promedio de los anuncios de inmuebles según el tipo de operación
+
+/*2. Precio promedio de los anuncios de inmuebles según el tipo de operación
 (alquiler, venta, etc), tipo de inmueble y rango m2 para cada cuatrimestre/año.
 Se consideran todos los anuncios que se dieron de alta en ese cuatrimestre. El
 precio se debe expresar en el tipo de moneda que corresponda, identificando de
-cuál se trata.
-*/
+cuál se trata.*/
 create view LOS_QUERY_EXPLORERS_BI.Vista_2 as
     select
-    CONCAT(BI_tipo_moneda_detalle, ' ', SUM(BI_anuncio_precio_promedio)) 'Precio Promedio',
+    CONCAT(BI_tipo_moneda_detalle, ' ', SUM(BI_anuncio_precio_promedio)/count(*)) 'Precio Promedio',
     BI_tipo_operacion_nombre, 
     BI_tipo_inmueble_detalle, 
     BI_rango_m2_detalle,
@@ -841,11 +830,9 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_2 as
 GO
 
 
-/*
-3. Los 5 barrios más elegidos para alquilar en función del rango etario de los
+/*3. Los 5 barrios más elegidos para alquilar en función del rango etario de los
 inquilinos para cada cuatrimestre/año. Se calcula en función de los alquileres
-dados de alta en dicho periodo.
-*/
+dados de alta en dicho periodo.*/
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_3 as
     select top 5 -- ESTO ESTA MAL PORQUE TE DEVUELVE SOLO LOS 5 DEL PRIMER CUATRI DE 2024, TIENE QUE DEVOLVER LOS PRIMEROS 5 DE CADA CUATRI/AÑO
@@ -865,16 +852,13 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_3 as
     order by count(*) desc
 GO
 
-
-/*
-4. Porcentaje de incumplimiento de pagos de alquileres en término por cada
+/*4. Porcentaje de incumplimiento de pagos de alquileres en término por cada
 mes/año. Se calcula en función de las fechas de pago y fecha de vencimiento del
-mismo. El porcentaje es en función del total de pagos en dicho periodo.
-*/
+mismo. El porcentaje es en función del total de pagos en dicho periodo.*/
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_4 as
     select
-    BI_pago_alquiler_porcentaje_incumplimiento,
+    BI_pago_alquiler_porcentaje_incumplimiento as 'Porcentaje de incumplimiento',
     BI_tiempo_mes, 
     BI_tiempo_anio
     from LOS_QUERY_EXPLORERS_BI.BI_Pago_Alquiler
@@ -886,16 +870,14 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_4 as
 GO
 
 
-/*
-5. Porcentaje promedio de incremento del valor de los alquileres para los
+/*5. Porcentaje promedio de incremento del valor de los alquileres para los
 contratos en curso por mes/año. Se calcula tomando en cuenta el último pago
 con respecto al del mes en curso, únicamente de aquellos alquileres que hayan
-tenido aumento y están activos.
-*/
+tenido aumento y están activos.*/
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_5 as
 select
-    STR(sum(BI_pago_alquiler_porcentaje_aumento*BI_pago_alquiler_cantidad_pagos)/sum(BI_pago_alquiler_cantidad_pagos)) + '%' AS 'INCREMENTO MENSUAL',
+    sum(BI_pago_alquiler_porcentaje_aumento*BI_pago_alquiler_cantidad_pagos)/sum(BI_pago_alquiler_cantidad_pagos) AS 'Porcentaje de incumplimiento mensual',
     BI_tiempo_mes,
     BI_tiempo_anio
 from LOS_QUERY_EXPLORERS_BI.BI_Pago_Alquiler
@@ -903,14 +885,13 @@ join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_tiempo_id = BI_pago_alquiler_tie
 group by 
     BI_tiempo_mes,
     BI_tiempo_anio
+having sum(BI_pago_alquiler_porcentaje_aumento*BI_pago_alquiler_cantidad_pagos)/sum(BI_pago_alquiler_cantidad_pagos) > 0
 GO
 
 
-/*
-6. Precio promedio de m2 de la venta de inmuebles según el tipo de inmueble y
+/*6. Precio promedio de m2 de la venta de inmuebles según el tipo de inmueble y
 la localidad para cada cuatrimestre/año. Se calcula en función de las ventas
-concretadas.
-*/
+concretadas.*/
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_6 as
     select
@@ -931,15 +912,13 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_6 as
 GO
 
 
-/*
-7. Valor promedio de la comisión según el tipo de operación (alquiler, venta, etc)
+/*7. Valor promedio de la comisión según el tipo de operación (alquiler, venta, etc)
 y sucursal para cada cuatrimestre/año. Se calcula en función de los alquileres y
-ventas concretadas dentro del periodo.
-*/
+ventas concretadas dentro del periodo.*/
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_7 as
     select
-    sum(BI_anuncio_comision_promedio)/count(*) 'Promedio comision',
+    sum(BI_anuncio_comision_promedio)/count(*) 'Valor promedio comision',
     BI_tipo_operacion_nombre,
     BI_sucursal_nombre,
     BI_tiempo_anio,
@@ -956,53 +935,41 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_7 as
 GO
 
 
-/*
-8. Porcentaje de operaciones concretadas (tanto de alquileres como ventas) por
+/*8. Porcentaje de operaciones concretadas (tanto de alquileres como ventas) por
 cada sucursal, según el rango etario de los empleados por año en función de la
-cantidad de anuncios publicados en ese mismo año.
-*/
+cantidad de anuncios publicados en ese mismo año.*/
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_8 as
     select
-    STR(cast(count(*) as numeric(18,2))/
-    cast((select count(*) from  LOS_QUERY_EXPLORERS_BI.BI_Anuncio 
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Estado_Anuncio on BI_anuncio_estado = BI_estado_anuncio_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Fecha_Anuncio on BI_fecha_anuncio_id = BI_anuncio_fecha_anuncio
-    where BI_estado_anuncio_id = 1 or BI_estado_anuncio_id = 3 and year(BI_fecha_anuncio_inicio) = BI_tiempo_anio) as numeric(18,2)) * 100) + '%'
-    'Porcentaje de operaciones concretadas',
-    BI_sucursal_nombre, BI_rango_etario_detalle, BI_tiempo_anio
+    cast(sum(BI_anuncio_cantidad_operaciones_concretadas) as float)/cast(sum(BI_anuncio_cantidad) as float) * 100 as 'Porcentaje operaciones concretadas',
+	BI_sucursal_nombre,
+	BI_rango_etario_detalle,
+	BI_tiempo_anio
     from LOS_QUERY_EXPLORERS_BI.BI_Anuncio
-
+	join LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal on BI_anuncio_sucursal = BI_sucursal_id
+	join LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario on BI_rango_etario_id = BI_anuncio_rango_etario_agente
+	join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_tiempo_id = BI_anuncio_tiempo_publicacion
     group by BI_sucursal_nombre, BI_rango_etario_detalle, BI_tiempo_anio
 GO
 
-/*
-/*
-9. Monto total de cierre de contratos por tipo de operación (tanto de alquileres
-como ventas) por cada cuatrimestre y sucursal, diferenciando el tipo de moneda.
-*/
+
+/*9. Monto total de cierre de contratos por tipo de operación (tanto de alquileres
+como ventas) por cada cuatrimestre y sucursal, diferenciando el tipo de moneda.*/
 create view LOS_QUERY_EXPLORERS_BI.Vista_9 as
-    select sum(BI_periodo_importe) 'Monto total', BI_tipo_operacion_nombre, BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_agente_sucursal, BI_tipo_moneda_nombre
-    from LOS_QUERY_EXPLORERS_BI.BI_Alquiler
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_alquiler_tiempo = BI_tiempo_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble on BI_alquiler_inmueble = BI_inmueble_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Anuncio on BI_anuncio_inmueble = BI_inmueble_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente on BI_anuncio_agente = BI_agente_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Periodo on BI_alquiler_periodo = BI_periodo_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda on BI_anuncio_tipo_moneda = BI_tipo_moneda_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion on BI_anuncio_tipo_operacion = BI_tipo_operacion_id
-    group by BI_tipo_operacion_nombre, BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_agente_sucursal, BI_tipo_moneda_nombre
-
-    UNION
-
-    select sum(BI_venta_precio), BI_tipo_operacion_nombre, BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_agente_sucursal, BI_tipo_moneda_nombre
-    from LOS_QUERY_EXPLORERS_BI.BI_Venta
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_venta_tiempo = BI_tiempo_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Inmueble on BI_venta_inmueble = BI_inmueble_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Anuncio on BI_anuncio_inmueble = BI_inmueble_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Agente on BI_anuncio_agente = BI_agente_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda on BI_anuncio_tipo_moneda = BI_tipo_moneda_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion on BI_anuncio_tipo_operacion = BI_tipo_operacion_id
-    group by BI_tipo_operacion_nombre, BI_tiempo_anio, BI_tiempo_cuatrimestre, BI_agente_sucursal, BI_tipo_moneda_nombre
-
-GO*/
+	select
+	sum(BI_anuncio_monto_total_operaciones_concretadas),
+	BI_tipo_operacion_nombre,
+	BI_tiempo_cuatrimestre,
+	BI_tipo_moneda_detalle,
+	BI_sucursal_nombre
+	from LOS_QUERY_EXPLORERS_BI.BI_Anuncio
+	join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Operacion on BI_tipo_operacion_id = BI_anuncio_tipo_operacion
+	join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_tiempo_id = BI_anuncio_tiempo_publicacion
+	join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tipo_Moneda on BI_tipo_moneda_id = BI_anuncio_tipo_moneda
+	join LOS_QUERY_EXPLORERS_BI.BI_Dim_Sucursal on BI_sucursal_id = BI_anuncio_sucursal
+	group by
+	BI_tipo_operacion_nombre,
+	BI_tiempo_cuatrimestre,
+	BI_tipo_moneda_detalle,
+	BI_sucursal_nombre
+GO
