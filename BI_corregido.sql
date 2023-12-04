@@ -825,21 +825,48 @@ inquilinos para cada cuatrimestre/año. Se calcula en función de los alquileres
 dados de alta en dicho periodo.*/
 GO
 create view LOS_QUERY_EXPLORERS_BI.Vista_3 as
-    select top 5 -- ESTO ESTA MAL PORQUE TE DEVUELVE SOLO LOS 5 DEL PRIMER CUATRI DE 2024, TIENE QUE DEVOLVER LOS PRIMEROS 5 DE CADA CUATRI/AÑO
-    BI_ubicacion_barrio,
-    BI_rango_etario_detalle,
-    BI_tiempo_anio,
-    BI_tiempo_cuatrimestre
-    from LOS_QUERY_EXPLORERS_BI.BI_Alquiler
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion on BI_alquiler_ubicacion = BI_ubicacion_id
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo on BI_tiempo_id = BI_alquiler_tiempo
-    join LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario on BI_rango_etario_id = BI_alquiler_rango_etario_inquilino
-    group by
-    BI_ubicacion_barrio,
-    BI_rango_etario_detalle,
-    BI_tiempo_anio,
-    BI_tiempo_cuatrimestre
-    order by count(*) desc
+    SELECT distinct top 5
+        (
+            SELECT TOP 1 BI_ubicacion_barrio
+            FROM LOS_QUERY_EXPLORERS_BI.BI_Alquiler A2
+            JOIN LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion ON A2.BI_alquiler_ubicacion = BI_ubicacion_id
+            JOIN LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo T2 ON T2.BI_tiempo_id = A2.BI_alquiler_tiempo
+            JOIN LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario R2 ON R2.BI_rango_etario_id = A2.BI_alquiler_rango_etario_inquilino
+            WHERE
+                R2.BI_rango_etario_id = A1.BI_alquiler_rango_etario_inquilino AND
+                T2.BI_tiempo_anio = T1.BI_tiempo_anio AND
+                T2.BI_tiempo_cuatrimestre = T1.BI_tiempo_cuatrimestre
+            GROUP BY
+                BI_ubicacion_barrio,
+                R2.BI_rango_etario_id,
+                T2.BI_tiempo_anio,
+                T2.BI_tiempo_cuatrimestre
+            ORDER BY COUNT(*) DESC
+        ) as barrio,
+        R1.BI_rango_etario_detalle,
+        T1.BI_tiempo_anio,
+        T1.BI_tiempo_cuatrimestre,
+         (
+            SELECT TOP 1 COUNT(*)
+            FROM LOS_QUERY_EXPLORERS_BI.BI_Alquiler A2
+            JOIN LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion ON A2.BI_alquiler_ubicacion = BI_ubicacion_id
+            JOIN LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo T2 ON T2.BI_tiempo_id = A2.BI_alquiler_tiempo
+            JOIN LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario R2 ON R2.BI_rango_etario_id = A2.BI_alquiler_rango_etario_inquilino
+            WHERE
+                R2.BI_rango_etario_id = A1.BI_alquiler_rango_etario_inquilino AND
+                T2.BI_tiempo_anio = T1.BI_tiempo_anio AND
+                T2.BI_tiempo_cuatrimestre = T1.BI_tiempo_cuatrimestre
+            GROUP BY
+                BI_ubicacion_barrio,
+                R2.BI_rango_etario_id,
+                T2.BI_tiempo_anio,
+                T2.BI_tiempo_cuatrimestre
+            ORDER BY COUNT(*) DESC
+        ) as cantidad_alquileres
+    FROM LOS_QUERY_EXPLORERS_BI.BI_Dim_Tiempo T1
+    JOIN LOS_QUERY_EXPLORERS_BI.BI_Alquiler A1 ON T1.BI_tiempo_id = A1.BI_alquiler_tiempo
+    JOIN LOS_QUERY_EXPLORERS_BI.BI_Dim_Rango_Etario R1 ON R1.BI_rango_etario_id = A1.BI_alquiler_rango_etario_inquilino
+    ORDER BY  5 DESC
 GO
 
 /*4. Porcentaje de incumplimiento de pagos de alquileres en término por cada
@@ -963,3 +990,13 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_9 as
 	BI_tipo_moneda_detalle,
 	BI_sucursal_nombre
 GO
+
+select * from LOS_QUERY_EXPLORERS_BI.Vista_1
+select * from LOS_QUERY_EXPLORERS_BI.Vista_2
+select * from LOS_QUERY_EXPLORERS_BI.Vista_3
+select * from LOS_QUERY_EXPLORERS_BI.Vista_4
+select * from LOS_QUERY_EXPLORERS_BI.Vista_5
+select * from LOS_QUERY_EXPLORERS_BI.Vista_6
+select * from LOS_QUERY_EXPLORERS_BI.Vista_7
+select * from LOS_QUERY_EXPLORERS_BI.Vista_8
+select * from LOS_QUERY_EXPLORERS_BI.Vista_9
