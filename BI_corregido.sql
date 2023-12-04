@@ -737,16 +737,6 @@ GO
 
 
 -- Creacion de indices
-CREATE INDEX idx_pago_periodo_fecha ON LOS_QUERY_EXPLORERS.pago_periodo (pago_periodo_fecha);
-CREATE INDEX idx_anuncio_fecha_publicacion ON LOS_QUERY_EXPLORERS.anuncio (anuncio_fecha_publicacion);
-CREATE INDEX idx_anuncio_estado ON LOS_QUERY_EXPLORERS.anuncio (anuncio_estado);
-CREATE INDEX idx_inmueble_id ON LOS_QUERY_EXPLORERS.inmueble (inmueble_id);
-CREATE INDEX idx_agente_id ON LOS_QUERY_EXPLORERS.agente (agente_id);
-CREATE INDEX idx_localidad_id ON LOS_QUERY_EXPLORERS.localidad (localidad_id);
-CREATE INDEX idx_barrio_id ON LOS_QUERY_EXPLORERS.barrio (barrio_id);
-CREATE INDEX idx_provincia_id ON LOS_QUERY_EXPLORERS.provincia (provincia_id);
-CREATE INDEX idx_alquiler_anuncio ON LOS_QUERY_EXPLORERS.alquiler (alquiler_anuncio);
-CREATE INDEX idx_venta_anuncio ON LOS_QUERY_EXPLORERS.venta (venta_anuncio);
 CREATE INDEX idx_BI_ubicacion_barrio_localidad_provincia ON LOS_QUERY_EXPLORERS_BI.BI_Dim_Ubicacion (BI_ubicacion_barrio, BI_ubicacion_localidad, BI_ubicacion_provincia);
 
 -- EJECUCIONES DE PROCEDURES
