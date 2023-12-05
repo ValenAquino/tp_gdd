@@ -990,13 +990,3 @@ create view LOS_QUERY_EXPLORERS_BI.Vista_9 as
 	BI_tipo_moneda_detalle,
 	BI_sucursal_nombre
 GO
-
-select * from LOS_QUERY_EXPLORERS_BI.Vista_1
-select * from LOS_QUERY_EXPLORERS_BI.Vista_2
-select * from LOS_QUERY_EXPLORERS_BI.Vista_3
-select * from LOS_QUERY_EXPLORERS_BI.Vista_4
-select * from LOS_QUERY_EXPLORERS_BI.Vista_5
-select * from LOS_QUERY_EXPLORERS_BI.Vista_6
-select * from LOS_QUERY_EXPLORERS_BI.Vista_7
-select * from LOS_QUERY_EXPLORERS_BI.Vista_8
-select * from LOS_QUERY_EXPLORERS_BI.Vista_9
